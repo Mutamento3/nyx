@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#0C0A09">
+<title>Room</title>
+<link href="fonts/source-serif-4.css" rel="stylesheet">
+<script>
+  try { document.documentElement.dataset.side = localStorage.getItem("nyx_side") === "moon" ? "moon" : "sun"; } catch (e) { document.documentElement.dataset.side = "sun"; }
+</script>
+<style>
+  :root{ --ink:#221E1C; --paper:#ECE8E1; --soft:#6B625C; --serif:"Source Serif 4", Georgia, "Songti SC", "Noto Serif SC", serif; }
+  :root[data-side="moon"]{ --ink:#E8C9B8; --paper:#0C0A09; --soft:#BC9684; }
+  html,body{ margin:0; height:100%; overflow:hidden; background:#0C0A09; font-family:var(--serif); -webkit-tap-highlight-color:transparent; }
+  canvas{ display:block; width:100vw; height:100vh; height:100dvh; touch-action:none; }
+  button{ font:inherit; color:inherit; background:none; border:0; padding:0; cursor:pointer; }
+  .top{ position:fixed; z-index:2; left:0; right:0; top:0; display:flex; align-items:center; justify-content:space-between; padding:calc(env(safe-area-inset-top) + 10px) 14px 0; pointer-events:none; }
+  .top > *{ pointer-events:auto; }
+  .round{ width:44px; height:44px; border-radius:50%; display:grid; place-items:center; background:rgba(236,232,225,.72); -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); color:#221E1C; }
+  :root[data-side="moon"] .round{ background:rgba(20,15,13,.66); color:#E8C9B8; }
+  .round svg{ width:22px; height:22px; fill:none; stroke:currentColor; stroke-width:1.6; stroke-linecap:round; stroke-linejoin:round; }
+  .round span{ width:14px; height:14px; border-radius:50%; background:currentColor; transition:box-shadow .6s; }
+  :root[data-side="moon"] .round span{ box-shadow:inset 5px -3px 0 0 rgba(20,15,13,1); }
+  h1{ margin:0; font-weight:400; font-style:italic; font-size:20px; color:#fff; text-shadow:0 1px 8px rgba(0,0,0,.4); }
+  .tag{ position:fixed; z-index:2; left:50%; bottom:calc(env(safe-area-inset-bottom) + 30px); transform:translate(-50%, 8px); opacity:0; transition:opacity .25s, transform .25s; background:rgba(236,232,225,.9); color:#221E1C; padding:9px 18px; border-radius:99px; font-size:15px; font-style:italic; pointer-events:none; white-space:nowrap; }
+  :root[data-side="moon"] .tag{ background:rgba(20,15,13,.86); color:#E8C9B8; }
+  .tag.on{ opacity:1; transform:translate(-50%, 0); }
+  .msg{ position:fixed; inset:0; display:grid; place-items:center; color:#bbb; font-style:italic; pointer-events:none; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div class="msg" id="msg">opening the door…</div>
+<header class="top">
+  <button class="round" id="back" type="button" aria-label="Home"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button>
+  <h1 id="title">Room</h1>
+  <button class="round" id="flip" type="button" aria-label="Flip day / night"><span></span></button>
+</header>
+<div class="tag" id="tag"></div>
+
+<script src="config.js"></script>
+<script type="importmap">
+{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/" } }
+</script>
+<script type="module" src="room.js"></script>
+</body>
+</html>

@@ -15,6 +15,7 @@ Flip the coin in the corner and the whole page turns over.
 - `splash.js` — the opening card: first letters fall into a column, each pulls its word out to the right; on a flip the words turn over.
 - `listen.html/.js/.css` — Listen: a record on the paper, a glass player card, Together / Alone, and a now-playing page with lyrics.
 - `attic.html/.js/.css` — Attic: bring up a pile of pictures, make your own shelves, sort and annotate them.
+- `room.html/.js` — Room: an empty three.js room to furnish with your own Blender models; see `docs/room-blender.md`.
 - `paper.js` — the paper every page sits on (grain, ink drops).
 - `config.js` — everything you change for your own install.
 

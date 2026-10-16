@@ -15,8 +15,16 @@ window.NYX = {
   apps: [
     { id: "chat", en: "Chat", zh: "聊天", art: "tokens" },
     { id: "listen", en: "Listen", zh: "一起听", href: "listen.html", art: "sampling" },
-    { id: "attic", en: "Attic", zh: "杂物间", href: "attic.html", art: "clusters" }
+    { id: "attic", en: "Attic", zh: "杂物间", href: "attic.html", art: "clusters" },
+    { id: "room", en: "Room", zh: "房间", href: "room.html", art: "context" }
   ],
+
+  // Room: an empty room to furnish with .glb files — docs/room-blender.md
+  room: {
+    name: "Room",
+    size: [3.4, 2.7, 4.4],
+    items: []
+  },
 
   // Listen: "files" plays the tracks below; "netease" plays your own NetEase account (docs/listen-netease.md).
   // lines: the two small lines under "Listen with me".
