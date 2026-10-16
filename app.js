@@ -33,6 +33,16 @@
     return 'url("data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="44" height="640"><g stroke="' + col + '" stroke-width="1" stroke-linecap="round">' + s + "</g></svg>") + '")';
   }
   var PAPER = { sun: [grain(false), marks("#221E1C")], moon: [grain(true), marks("#C07A5C")] };
+  // ink drops scattered over the paper, the same shape as the send button: random place, size and tilt, very faint
+  function drops() {
+    var W = 390, H = 844, s = "", R = Math.random, n = 9 + Math.floor(R() * 6);
+    for (var i = 0; i < n; i++) {
+      var r = 3 + Math.pow(R(), 2.2) * 26, x = R() * W, y = R() * H, rot = 45 + (R() - .5) * 30, o = (.05 + R() * .09).toFixed(3);
+      s += '<path transform="translate(' + x.toFixed(1) + " " + y.toFixed(1) + ") rotate(" + rot.toFixed(1) + ") scale(" + r.toFixed(2) + ')" d="M0 -1 A1 1 0 1 1 -1 0 L-1 -1 Z" fill="currentColor" fill-opacity="' + o + '"/>';
+    }
+    var el = $("drops"); el.setAttribute("viewBox", "0 0 " + W + " " + H); el.innerHTML = s;
+  }
+  drops();
   function paintSide() {
     var s = root.dataset.side, p = PAPER[s];
     root.style.setProperty("--grain", p[0]); root.style.setProperty("--marks", p[1]);

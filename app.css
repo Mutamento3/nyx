@@ -22,6 +22,7 @@ button{ font:inherit; color:inherit; background:none; border:0; padding:0; curso
 /* a big faint star in the bottom-right corner, half off the page, like a watermark */
 #star{ position:fixed; z-index:0; pointer-events:none; right:-24vw; bottom:-14vh; width:min(88vw, 520px); aspect-ratio:1; background:url(star.svg) center/contain no-repeat; opacity:.09; transform:rotate(-12deg); }
 :root[data-side="moon"] #star{ opacity:.12; filter:brightness(.55); }
+#drops{ position:fixed; inset:0; z-index:0; width:100%; height:100%; pointer-events:none; color:var(--drop); }
 #paper{ position:fixed; inset:0; z-index:0; pointer-events:none; background-image:var(--grain); background-size:180px; opacity:1; }
 
 /* ── gate ── */
