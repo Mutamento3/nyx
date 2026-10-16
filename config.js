@@ -13,8 +13,18 @@ window.NYX = {
   // the home poster: one block per entry, biggest first. id "chat" opens the chat; anything else needs an href.
   // art: tokens | context | clusters | sampling | beam | gelu | loss (left out = picked in order)
   apps: [
-    { id: "chat", en: "Chat", zh: "聊天", art: "tokens" }
+    { id: "chat", en: "Chat", zh: "聊天", art: "tokens" },
+    { id: "listen", en: "Listen", zh: "一起听", href: "listen.html", art: "sampling" }
   ],
+
+  // Listen: "files" plays the tracks below; "netease" plays your own NetEase account (docs/listen-netease.md).
+  // lines: the two small lines under "Listen with me".
+  listen: {
+    source: "files",
+    tracks: [
+      // { src: "music/song.mp3", name: "Song", artist: "Artist", cover: "music/song.jpg", lrc: "music/song.lrc" }
+    ]
+  },
   // Clawd, the little guide on the home poster. Leave clawd null and his text box stays shut;
   // give it a path on your relay (e.g. "/app/clawd") and he'll talk — README → "Clawd" shows how to wire it to Sonnet.
   clawd: null,

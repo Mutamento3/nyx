@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1">
+<meta name="theme-color" content="#ECE8E1">
+<title>Listen</title>
+<link href="fonts/source-serif-4.css" rel="stylesheet">
+<script>
+  try { document.documentElement.dataset.side = localStorage.getItem("nyx_side") === "moon" ? "moon" : "sun"; } catch (e) { document.documentElement.dataset.side = "sun"; }
+</script>
+<link rel="stylesheet" href="app.css">
+<link rel="stylesheet" href="listen.css">
+</head>
+<body class="listen">
+<div id="paper" aria-hidden="true"></div>
+<div id="star" aria-hidden="true"></div>
+<svg id="drops" aria-hidden="true" preserveAspectRatio="xMidYMid slice"></svg>
+
+<div class="lp">
+  <svg class="thread" id="thread" aria-hidden="true" viewBox="0 0 390 760" preserveAspectRatio="none"></svg>
+  <header class="lt">
+    <button class="back" id="back" type="button" aria-label="Home"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button>
+    <span class="caps">Listen<br>Together</span>
+  </header>
+
+  <section class="stage">
+    <div class="intro">
+      <h1>Listen with me</h1>
+      <p id="lines"></p>
+    </div>
+    <div class="deck" id="deck" aria-hidden="true"></div>
+  </section>
+
+  <section class="card" id="card" role="button" tabindex="0" aria-label="Now playing">
+    <div class="cv" id="cardCover"></div>
+    <div class="meta"><b id="cardName">Nothing yet</b><span id="cardArtist">pick a song below</span></div>
+    <div class="ctl">
+      <button type="button" id="prev" aria-label="Previous"><svg viewBox="0 0 24 24"><path d="M7 5v14M18 5l-8 7 8 7z"/></svg></button>
+      <button type="button" id="play" class="pp" aria-label="Play"><svg viewBox="0 0 24 24"><path class="i-play" d="M8 5.5v13l11-6.5z"/><path class="i-pause" d="M8 5v14M16 5v14"/></svg></button>
+      <button type="button" id="next" aria-label="Next"><svg viewBox="0 0 24 24"><path d="M17 5v14M6 5l8 7-8 7z"/></svg></button>
+    </div>
+    <div class="bar"><i id="cardBar"></i></div>
+    <span class="tm" id="cardTime">0:00 / 0:00</span>
+  </section>
+
+  <div class="mode">
+    <button type="button" id="mTo" class="pill"><i>✓</i>Together</button>
+    <button type="button" id="mSo" class="pill"><i>×</i>Alone</button>
+  </div>
+  <p class="note" id="note"></p>
+
+  <nav class="tabs" id="tabs"></nav>
+  <form class="find" id="find" hidden><input id="q" placeholder="Search songs, artists…" enterkeyhint="search" autocomplete="off"><button type="submit" aria-label="Search">→</button></form>
+  <div class="list" id="list"></div>
+</div>
+
+<!-- now playing: the record up close -->
+<section class="np" id="np" hidden aria-label="Now playing">
+  <div class="np-bg" id="npBg"></div>
+  <svg class="np-thread" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><path d="M104 6 C80 4 92 30 78 40 C62 52 40 30 22 44 C4 58 30 70 12 78 C2 82 4 86 9 87.5" fill="none" stroke="var(--thread)" stroke-width="1.2" vector-effect="non-scaling-stroke"/></svg>
+  <header class="lt">
+    <button class="back" id="npDown" type="button" aria-label="Close"><svg viewBox="0 0 24 24"><path d="M5 9l7 7 7-7"/></svg></button>
+    <span class="caps one">Now playing</span>
+  </header>
+  <div class="np-deck" id="npDeck" aria-hidden="true"></div>
+  <div class="np-meta"><b id="npName"></b><span id="npArtist"></span></div>
+  <div class="lrc" id="lrc"><div class="lrc-in" id="lrcIn"></div></div>
+  <div class="np-bar">
+    <span id="npCur">0:00</span>
+    <div class="seek" id="seek"><svg viewBox="0 0 300 24" preserveAspectRatio="none"><path class="rest" d=""/><path class="done" d=""/></svg><svg class="bead" id="drop" viewBox="-1 -3 2 4.2"><path d="M0 -2.8 C.28 -1.6 .9 -.7 .9 .15 A.9 .9 0 0 1 -.9 .15 C-.9 -.7 -.28 -1.6 0 -2.8 Z"/></svg></div>
+    <span id="npDur">0:00</span>
+  </div>
+  <div class="np-ctl">
+    <button type="button" id="npPrev" aria-label="Previous"><svg viewBox="0 0 24 24"><path d="M7 5v14M18 5l-8 7 8 7z"/></svg></button>
+    <button type="button" id="npPlay" class="pp big" aria-label="Play"><svg viewBox="0 0 24 24"><path class="i-play" d="M8 5.5v13l11-6.5z"/><path class="i-pause" d="M8 5v14M16 5v14"/></svg></button>
+    <button type="button" id="npNext" aria-label="Next"><svg viewBox="0 0 24 24"><path d="M17 5v14M6 5l8 7-8 7z"/></svg></button>
+  </div>
+</section>
+
+<audio id="audio" preload="auto"></audio>
+<div class="toast" id="toast"></div>
+
+<script src="config.js"></script>
+<script src="paper.js"></script>
+<script src="listen.js"></script>
+</body>
+</html>

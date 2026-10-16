@@ -91,6 +91,7 @@ node server.js       # 之后让它常驻：systemd、pm2 都行
 | `POST /app/music/search {keywords, limit}` | `cloudsearch` | 搜歌 |
 | `POST /app/music/daily` | `recommend_songs` | 每日推荐 |
 | `POST /app/music/recent {limit}` | `record_recent_song` | 最近播放（手机上听过的也在） |
+| `POST /app/music/me` | `login_status` | 拿你的 uid（歌单要用） |
 | `POST /app/music/playlists {uid}` | `user_playlist` | 你的歌单 |
 | `POST /app/music/tracks {id}` | `playlist_track_all` | 歌单里的歌 |
 | `POST /app/music/url {id, level}` | `song_url_v1` | 播放地址 |
@@ -101,7 +102,7 @@ Python（FastAPI）的样子：
 
 ```python
 import httpx
-ACTIONS = {"search": "cloudsearch", "daily": "recommend_songs", "recent": "record_recent_song",
+ACTIONS = {"me": "login_status", "search": "cloudsearch", "daily": "recommend_songs", "recent": "record_recent_song",
            "playlists": "user_playlist", "tracks": "playlist_track_all", "url": "song_url_v1", "lyric": "lyric"}
 now = {"id": None}
 
