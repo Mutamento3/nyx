@@ -33,14 +33,18 @@
     return 'url("data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="44" height="640"><g stroke="' + col + '" stroke-width="1" stroke-linecap="round">' + s + "</g></svg>") + '")';
   }
   var PAPER = { sun: [grain(false), marks("#221E1C")], moon: [grain(true), marks("#C07A5C")] };
-  // ink drops scattered over the paper, the same shape as the send button: random place, size and tilt, very faint
+  // ink drops scattered over the paper, like the send button: slim teardrops, some frosted, some striped, very faint
   function drops() {
-    var W = 390, H = 844, s = "", R = Math.random, n = 9 + Math.floor(R() * 6);
-    for (var i = 0; i < n; i++) {
-      var r = 2 + Math.pow(R(), 2.4) * 11, x = R() * W, y = R() * H, rot = 45 + (R() - .5) * 30, o = (.1 + R() * .14).toFixed(3);
-      s += '<path transform="translate(' + x.toFixed(1) + " " + y.toFixed(1) + ") scale(.42 1) rotate(" + rot.toFixed(1) + ") scale(" + r.toFixed(2) + ')" d="M0 -1 A1 1 0 1 1 -1 0 L-1 -1 Z" fill="currentColor" fill-opacity="' + o + '"/>';
-    }
-    var el = $("drops"); el.setAttribute("viewBox", "0 0 " + W + " " + H); el.innerHTML = '<defs><filter id="nyxFrost" x="-30%" y="-30%" width="160%" height="160%"><feTurbulence type="fractalNoise" baseFrequency="1.4" numOctaves="2" seed="7" result="n"/><feColorMatrix in="n" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -2.2 1.9" result="a"/><feComposite in="SourceGraphic" in2="a" operator="in"/></filter></defs><g filter="url(#nyxFrost)">' + s + '</g>';
+    var W = 390, H = 844, R = Math.random, n = 10 + Math.floor(R() * 6), s = "";
+    // slim teardrop pointing up, unit size; some frosted solid, some striped
+    var D = "M0 -2.8 C.28 -1.6 .9 -.7 .9 .15 A.9 .9 0 0 1 -.9 .15 C-.9 -.7 -.28 -1.6 0 -2.8 Z";
+    for (var i = 0; i < n; i++){ var r = 2.2 + Math.pow(R(), 2.3) * 7, striped = R() < .4;
+      s += '<path transform="translate(' + (R() * W).toFixed(1) + ' ' + (R() * H).toFixed(1) + ') rotate(' + ((R() - .5) * 18).toFixed(1) + ') scale(' + r.toFixed(2) + ')" d="' + D + '" ' +
+        (striped ? 'fill="url(#nyx_s)" stroke="currentColor" stroke-width="' + (.6 / r).toFixed(3) + '" stroke-opacity=".35" fill-opacity="1" opacity="' + (.35 + R() * .3).toFixed(2) + '"'
+                 : 'fill="currentColor" fill-opacity="' + (.1 + R() * .14).toFixed(3) + '" filter="url(#nyx_f)"') + '/>'; }
+    var defs = '<defs><filter id="nyx_f" x="-40%" y="-20%" width="180%" height="140%"><feTurbulence type="fractalNoise" baseFrequency="1.4" numOctaves="2" seed="7" result="n"/><feColorMatrix in="n" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -2.2 1.9" result="a"/><feComposite in="SourceGraphic" in2="a" operator="in"/></filter>' +
+      '<pattern id="nyx_s" patternUnits="userSpaceOnUse" width="6" height="3.2"><rect width="6" height="1" fill="currentColor"/></pattern></defs>';
+    var el = $("drops"); el.setAttribute("viewBox", "0 0 " + W + " " + H); el.innerHTML = defs + s;
   }
   drops();
   function paintSide() {
