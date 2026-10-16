@@ -38,10 +38,12 @@
     var W = 390, H = 844, R = Math.random, n = 10 + Math.floor(R() * 6), s = "";
     // slim teardrop pointing up, unit size; some frosted solid, some striped
     var D = "M0 -2.8 C.28 -1.6 .9 -.7 .9 .15 A.9 .9 0 0 1 -.9 .15 C-.9 -.7 -.28 -1.6 0 -2.8 Z";
-    for (var i = 0; i < n; i++){ var r = 2.2 + Math.pow(R(), 2.3) * 7, striped = R() < .4;
-      s += '<path transform="translate(' + (R() * W).toFixed(1) + ' ' + (R() * H).toFixed(1) + ') rotate(' + ((R() - .5) * 18).toFixed(1) + ') scale(' + r.toFixed(2) + ')" d="' + D + '" ' +
-        (striped ? 'fill="url(#nyx_s)" stroke="currentColor" stroke-width="' + (.6 / r).toFixed(3) + '" stroke-opacity=".35" fill-opacity="1" opacity="' + (.35 + R() * .3).toFixed(2) + '"'
-                 : 'fill="currentColor" fill-opacity="' + (.1 + R() * .14).toFixed(3) + '" filter="url(#nyx_f)"') + '/>'; }
+    for (var i = 0; i < n; i++){ var r = 2.2 + Math.pow(R(), 2.3) * 7, k = R(), x = R() * W, y = R() * H, rot = (R() - .5) * 18;
+      var at = function (dx, dy, sc, rr){ return 'transform="translate(' + (x + dx).toFixed(1) + ' ' + (y + dy).toFixed(1) + ') rotate(' + rr.toFixed(1) + ') scale(' + sc.toFixed(2) + ')" d="' + D + '" '; };
+      if (k < .4) s += '<path ' + at(0, 0, r, rot) + 'fill="currentColor" fill-opacity="' + (.1 + R() * .14).toFixed(3) + '" filter="url(#nyx_f)"/>';
+      else if (k < .7) s += '<path ' + at(0, 0, r, rot) + 'fill="url(#nyx_s)" stroke="currentColor" stroke-width="' + (.6 / r).toFixed(3) + '" stroke-opacity=".35" opacity="' + (.35 + R() * .3).toFixed(2) + '"/>';
+      else { var m = 2 + Math.floor(R() * 2), op = (.25 + R() * .25).toFixed(2);   // bare outlines, slightly different sizes, overlapping out of step
+        for (var j = 0; j < m; j++){ var sc = r * (1 - j * (.14 + R() * .1)); s += '<path ' + at((R() - .5) * r * .9, (R() - .3) * r * 1.1, sc, rot + (R() - .5) * 14) + 'fill="none" stroke="currentColor" stroke-width="' + (.7 / sc).toFixed(3) + '" opacity="' + op + '"/>'; } } }
     var defs = '<defs><filter id="nyx_f" x="-40%" y="-20%" width="180%" height="140%"><feTurbulence type="fractalNoise" baseFrequency="1.4" numOctaves="2" seed="7" result="n"/><feColorMatrix in="n" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -2.2 1.9" result="a"/><feComposite in="SourceGraphic" in2="a" operator="in"/></filter>' +
       '<pattern id="nyx_s" patternUnits="userSpaceOnUse" width="4" height=".34"><rect x="-2" width="8" height=".11" fill="currentColor"/></pattern></defs>';
     var el = $("drops"); el.setAttribute("viewBox", "0 0 " + W + " " + H); el.innerHTML = defs + s;
