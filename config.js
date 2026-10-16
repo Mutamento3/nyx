@@ -15,6 +15,9 @@ window.NYX = {
   apps: [
     { id: "chat", en: "Chat", zh: "聊天", art: "tokens" }
   ],
+  // Clawd, the little guide on the home poster. Leave clawd null and his text box stays shut;
+  // give it a path on your relay (e.g. "/app/clawd") and he'll talk — README → "Clawd" shows how to wire it to Sonnet.
+  clawd: null,
   tagline: "The universe is literally spelling it out for you.",
 
   // the opening card: one word per row on each side; their first letters spell the column on the left

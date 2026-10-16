@@ -86,6 +86,12 @@
     document.addEventListener("touchend", function (e) { if (sx === null) return; var t = e.changedTouches[0], dx = t.clientX - sx, dy = t.clientY - sy; sx = null;
       if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy) * 1.4) return; if (dx > 0 && !H.hidden) openDrawer(); else closeDrawer(); }, { passive: true }); })();
 
+  /* Clawd on the home poster talks to whatever your relay mounts at NYX.clawd.path (see README) */
+  function askClawd(text, side, history) {
+    return api(C.clawd.path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text: text, side: side, history: history }) })
+      .then(function (d) { return d.reply; });
+  }
+
   /* ---------- relay ---------- */
   function api(path, opt) {
     opt = opt || {}; opt.headers = Object.assign({ "Authorization": "Bearer " + key }, opt.headers || {});
@@ -299,7 +305,7 @@
       $("gate").hidden = true; $("aiName").textContent = AI;
       log.innerHTML = ""; byId.clear(); lastId = 0;
       (d.messages || []).forEach(put); openStream();
-      if (!home) home = NyxHome($("poster"), APPS, openApp, C.tagline);
+      if (!home) home = NyxHome($("poster"), APPS, openApp, C.tagline, { me: C.meName, drawer: openDrawer, ask: C.clawd && C.clawd.path ? askClawd : null });
       show(location.hash === "#chat" ? "room" : "home");
     });
   }

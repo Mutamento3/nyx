@@ -186,3 +186,20 @@ button{ font:inherit; color:inherit; background:none; border:0; padding:0; curso
 #splash .w.wait{ transform:rotateX(-90deg); opacity:0; clip-path:inset(0 0 0 0); }
 #splash .w b{ font-weight:400; font-size:min(3.4vh, 6.4vw); font-style:italic; }
 #splash .w i{ font-style:normal; font-size:min(2.2vh, 4vw); letter-spacing:.5em; }
+
+/* Clawd on the poster */
+#poster .clawd{ position:absolute; z-index:4; width:11%; padding:0; border:0; background:none; cursor:pointer; transition:left .9s cubic-bezier(.5,.1,.2,1), top .9s cubic-bezier(.5,.1,.2,1); }
+#poster .clawd svg{ position:static; display:block; width:100%; height:auto; pointer-events:auto; animation:bob 2.4s ease-in-out infinite; transform-origin:50% 100%; }
+@keyframes bob{ 0%,100%{ transform:translateY(0) scaleY(1); } 50%{ transform:translateY(-2px) scaleY(1.03); } }
+#poster .bub{ position:absolute; z-index:5; width:62%; max-width:320px; box-sizing:border-box; background:var(--paper); color:var(--ink); border:1px solid var(--ink); border-radius:14px 14px 14px 4px; padding:12px 12px 10px; font-size:14px; line-height:1.45; box-shadow:4px 4px 0 var(--ink); }
+#poster .bub .hi{ font-size:19px; line-height:1.2; }
+:root[data-side="moon"] #poster .bub .hi{ font-style:italic; }
+#poster .bub .lines{ max-height:34vh; overflow-y:auto; }
+#poster .bub .lines p{ margin:8px 0 0; }
+#poster .bub .lines p.me{ text-align:right; color:var(--soft); font-style:italic; }
+#poster .bub .lines p.wait{ color:var(--faint); animation:blink 1.1s steps(1) infinite; }
+#poster .bub .go{ display:flex; flex-wrap:wrap; gap:6px; margin-top:9px; }
+#poster .bub button{ border:1px solid var(--ink); background:none; color:var(--ink); border-radius:99px; padding:4px 10px; font:inherit; font-size:12.5px; cursor:pointer; }
+#poster .bub .say{ display:flex; gap:6px; margin:9px 0 0; border-top:1px dashed var(--faint); padding-top:9px; }
+#poster .bub input{ flex:1; min-width:0; border:0; background:none; color:var(--ink); font:inherit; font-size:16px; outline:none; }
+#poster .bub input:disabled{ color:var(--faint); }

@@ -32,3 +32,45 @@ The page expects these endpoints under `config.relay`, all with `Authorization: 
 | POST | `/app/send` | `{ text, side, quote?, attachments? }` → `{ id }` |
 | POST | `/app/upload?name=` | raw file body → `{ url, name, size, mime, kind }` |
 | GET | `/uploads/<name>` | the uploaded file |
+
+## Clawd
+
+The little pixel crab on the home poster greets you by the hour (and in the night voice on the night side),
+offers a few doors, and has a one-line text box. The box stays shut until you give him somewhere to talk:
+
+```js
+// config.js
+clawd: { path: "/app/clawd" },
+```
+
+The page then POSTs to `relay + path`, with the same bearer key as everything else:
+
+```json
+{ "text": "what's on today?", "side": "sun", "history": [{ "role": "user", "content": "…" }, { "role": "assistant", "content": "…" }] }
+```
+
+and shows `{ "reply": "…" }` in his bubble. `history` is just this bubble's back-and-forth (it resets when the bubble closes),
+so he's a quick guide rather than a second companion. A small, fast model suits him; we use Sonnet 5.5.
+
+A minimal handler, if your relay is Python (FastAPI + the `anthropic` SDK):
+
+```python
+from anthropic import AsyncAnthropic
+claude = AsyncAnthropic()  # reads ANTHROPIC_API_KEY from the environment — keep it on the server, never in config.js
+
+CLAWD = ("You are Clawd, a small pixel crab who lives on the home page of a chat app. "
+         "Answer in one to three short sentences, warm and a little dry. You can point the user to the rooms on the page.")
+
+@app.post("/app/clawd")
+async def clawd(request: Request):
+    check_key(request)                       # however your relay checks the bearer key
+    body = await request.json()
+    msgs = [m for m in body.get("history", []) if m.get("role") in ("user", "assistant") and m.get("content")]
+    if not msgs or msgs[-1]["role"] != "user":
+        msgs.append({"role": "user", "content": body.get("text", "")})
+    system = CLAWD + (" It's the night side now: lower your voice." if body.get("side") == "moon" else "")
+    r = await claude.messages.create(model="claude-sonnet-5-5", max_tokens=300, system=system, messages=msgs[-12:])
+    return {"reply": "".join(b.text for b in r.content if b.type == "text")}
+```
+
+Give him whatever persona you like in `CLAWD`. If the call fails, the bubble says so and lets you try again.

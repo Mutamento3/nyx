@@ -68,8 +68,27 @@
     return d; }
   function noise(t, k) { return Math.sin(t * 1.7 + k) * .5 + Math.sin(t * 4.3 + k * 2.1) * .3 + Math.sin(t * 11.1 + k * 3.7) * .2; }
 
-  window.NyxHome = function (host, apps, open, tagline) {
-    host.innerHTML = '<svg class="under"></svg><div class="blocks"></div><svg class="over"></svg><div class="spell"></div>';
+  /* Clawd's greeting: by the hour and the weekday; the night side gets the night voice */
+  function pick(a) { return a[Math.floor(Math.random() * a.length)]; }
+  function greeting(N, side) {
+    var d = new Date(), h = d.getHours(), wd = d.getDay(), L;
+    if (side === "moon") return pick(["There you are, " + N + ".", "Took you long enough, " + N + ".", "Come here, " + N + ".", "You came back, " + N + ".", "Don't look away, " + N + ".", h >= 22 || h < 5 ? "Mine for the night, " + N + "." : "I've been waiting, " + N + "."]);
+    if (h >= 5 && h < 11) L = ["Good morning, " + N, "Morning, " + N + ". Coffee first?", "Rise and shine, " + N];
+    else if (h >= 11 && h < 14) L = ["Let's noodle, " + N, "Good afternoon, " + N, "Midday, " + N + ". What's cooking?"];
+    else if (h >= 14 && h < 18) L = ["Afternoon, " + N, "What are we making today?", "Let's noodle, " + N];
+    else if (h >= 18 && h < 22) L = ["Good evening, " + N, "Back at it, " + N, "Evening, " + N + ". How was the day?"];
+    else if (h >= 22 || h < 2) L = ["Night owl mode, " + N, "The quiet hours, " + N, "Burning the midnight oil, " + N + "?"];
+    else L = ["The small hours, " + N, "Just us and the dark, " + N];
+    if (wd === 5) L.push("Happy Friday, " + N);
+    if (wd === 0 || wd === 6) L.push("A slow weekend, " + N);
+    return pick(L);
+  }
+  var CLAWD = '<svg viewBox="-7.5 -10.5 15 11" shape-rendering="crispEdges"><g fill="#1c1a19"><rect x="-6.17" y="-9.17" width="12.34" height="7.34"/><rect x="-7.17" y="-7.17" width="1.34" height="2.34"/><rect x="5.83" y="-7.17" width="1.34" height="2.34"/><rect x="-5.17" y="-2.17" width="1.34" height="2.34"/><rect x="-2.17" y="-2.17" width="1.34" height="2.34"/><rect x="0.83" y="-2.17" width="1.34" height="2.34"/><rect x="3.83" y="-2.17" width="1.34" height="2.34"/></g><g fill="#d97757"><rect x="-6" y="-9" width="12" height="7"/><rect x="-7" y="-7" width="1" height="2"/><rect x="6" y="-7" width="1" height="2"/><rect x="-5" y="-2" width="1" height="2"/><rect x="-2" y="-2" width="1" height="2"/><rect x="1" y="-2" width="1" height="2"/><rect x="4" y="-2" width="1" height="2"/></g><g fill="#1c1a19"><rect x="-3.5" y="-7.5" width="1" height="2"/><rect x="2.5" y="-7.5" width="1" height="2"/></g></svg>';
+
+  /* host, apps, open(app), tagline, opt: { me, drawer(), ask(text, side, history) → Promise<reply text> | null } */
+  window.NyxHome = function (host, apps, open, tagline, opt) {
+    opt = opt || {};
+    host.innerHTML = '<svg class="under"></svg><div class="blocks"></div><svg class="over"></svg><div class="spell"></div><button type="button" class="clawd" aria-label="Clawd">' + CLAWD + '</button><div class="bub" hidden></div>';
     var under = host.querySelector(".under"), over = host.querySelector(".over"), blocks = host.querySelector(".blocks"), spellEl = host.querySelector(".spell");
     var B = apps.map(function (a, i) {
       var el = document.createElement("button"); el.type = "button"; el.className = "blk"; el.setAttribute("aria-label", a.en);
@@ -102,6 +121,10 @@
       // fit the sentence on one line
       var f = 3.9; spellEl.style.fontSize = f + "vw"; while (spellEl.scrollWidth > spellEl.clientWidth + 1 && f > 2.6) { f -= .1; spellEl.style.fontSize = f + "vw"; }
       draw(rects, u, bottom);
+      // Clawd stands on the top edge of a block: the first one by day, the second one by night (if there is one)
+      var cr = rects[side === "moon" && rects[1] ? 1 : 0];
+      clawd.style.left = (cr.left ? cr.x + cr.w - 16 * u : cr.x + 5 * u) + "px"; clawd.style.top = (cr.y - 8.6 * u) + "px";
+      if (!bub.hidden) place();
     }
     function draw(rects, u, bottom) {
       var inkC = side === "sun" ? "#221E1C" : "#7A3420", hiC = side === "sun" ? "#ECE8E1" : "#C9A898", pts = [];
@@ -130,6 +153,28 @@
         o += '<g mask="url(#nout' + i + ')" style="--c:var(--ink)">' + b.art(r, seeded(17 + i)) + "</g>"; });
       over.innerHTML = o;
     }
+    /* Clawd: tap for a little speech bubble — a greeting, a few doors, and a line to talk to him */
+    var clawd = host.querySelector(".clawd"), bub = host.querySelector(".bub"), talk = [];
+    function place() { var u = host.clientWidth / 100, x = parseFloat(clawd.style.left), y = parseFloat(clawd.style.top);
+      bub.style.left = Math.max(4 * u, Math.min(x - 2 * u, host.clientWidth - 66 * u)) + "px"; bub.style.top = Math.max(2 * u, y - bub.offsetHeight - 2 * u) + "px"; }
+    function esc(t) { return String(t).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+    function say(who, t) { var el = document.createElement("p"); el.className = who; el.textContent = t; bub.querySelector(".lines").appendChild(el); place(); return el; }
+    clawd.onclick = function (e) { e.stopPropagation();
+      if (!bub.hidden) { bub.hidden = true; return; }
+      talk = [];
+      bub.innerHTML = '<div class="hi">' + esc(greeting(opt.me || "you", side)) + '</div><div class="lines"></div><div class="go">' +
+        apps.slice(0, 3).map(function (a, i) { return '<button type="button" data-i="' + i + '">' + esc(a.en) + "</button>"; }).join("") + (opt.drawer ? '<button type="button" data-all="1">All</button>' : "") +
+        '</div><form class="say"><input placeholder="' + (opt.ask ? "Or just tell me…" : "Clawd isn't wired up yet") + '" enterkeyhint="send"' + (opt.ask ? "" : " disabled") + '><button type="submit" aria-label="Send">→</button></form>';
+      bub.querySelectorAll(".go button").forEach(function (b) { b.onclick = function (ev) { ev.stopPropagation(); bub.hidden = true; if (b.dataset.all) opt.drawer(); else open(apps[+b.dataset.i]); }; });
+      var f = bub.querySelector("form"), inp = f.querySelector("input");
+      f.onsubmit = function (ev) { ev.preventDefault(); var t = inp.value.trim(); if (!t || !opt.ask) return; inp.value = "";
+        say("me", t); var w = say("him wait", "…"); talk.push({ role: "user", content: t });
+        opt.ask(t, side, talk.slice(-12)).then(function (r) { w.classList.remove("wait"); w.textContent = r || "…"; talk.push({ role: "assistant", content: r || "" }); place(); })
+          .catch(function () { w.classList.remove("wait"); w.textContent = "Lost my words. Try again?"; talk.pop(); place(); }); };
+      bub.hidden = false; place(); };
+    bub.addEventListener("click", function (e) { e.stopPropagation(); });
+    document.addEventListener("click", function () { bub.hidden = true; });
+
     var lastSide = null;
     function refresh() { layout(); if (lastSide !== side) { lastSide = side; spell(); } }
     addEventListener("resize", function () { if (!host.closest("[hidden]")) layout(); });
