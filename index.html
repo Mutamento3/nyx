@@ -29,8 +29,20 @@
   </div>
 </section>
 
+<section id="home" hidden>
+  <header class="hbar">
+    <button class="round" id="menu" type="button" aria-label="All"><svg viewBox="0 0 24 24"><path d="M5 8h14M5 12h14M5 16h14"/></svg></button>
+    <h1 class="title"><span id="homeTitle"></span> <i>(<b id="glyph"></b>)</i></h1>
+    <button class="round flip" id="flip2" type="button" aria-label="Flip day / night"><span></span></button>
+  </header>
+  <div class="scroller"><div id="poster"></div></div>
+</section>
+
+<aside id="drawer" aria-hidden="true"><div class="sh"></div><nav class="pn"><div class="hd"><i></i><span id="drawerTitle"></span></div><div id="drawerList"></div></nav></aside>
+
 <section id="room" hidden>
   <header class="top">
+    <button class="back" id="back" type="button" aria-label="Home"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button>
     <div class="who">
       <b id="aiName"></b>
       <span id="state"><i></i><em>offline</em></span>
@@ -42,10 +54,12 @@
 
   <footer class="write">
     <div class="quote" id="quote" hidden><span></span><button type="button" aria-label="Remove quote">×</button></div>
+    <div class="emo" id="emoPop" hidden></div>
     <div class="tray" id="tray" hidden></div>
     <div class="line">
       <button class="clip" id="clip" type="button" aria-label="Attach"><svg viewBox="0 0 24 24"><path d="M20 11.5l-8.2 8.2a4.8 4.8 0 0 1-6.8-6.8l8.6-8.6a3.2 3.2 0 0 1 4.5 4.5l-8.5 8.5a1.6 1.6 0 0 1-2.3-2.3l7.8-7.8"/></svg></button>
       <input type="file" id="file" multiple hidden>
+      <button class="clip" id="emo" type="button" aria-label="Emoji and stickers"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M8.6 14.2a4 4 0 0 0 6.8 0"/><path d="M9.5 9.8h.01M14.5 9.8h.01"/></svg></button>
       <textarea id="text" rows="1" placeholder="Write a letter…" enterkeyhint="send"></textarea>
       <button class="drop" id="send" type="button" aria-label="Send"><svg viewBox="0 0 24 24"><path d="M12 18V6M7 11l5-5 5 5"/></svg></button>
     </div>
@@ -53,6 +67,8 @@
 </section>
 
 <script src="config.js"></script>
+<script src="splash.js"></script>
+<script src="home.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

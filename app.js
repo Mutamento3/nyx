@@ -39,11 +39,36 @@
     var m = document.querySelector('meta[name="theme-color"]'); if (m) m.content = s === "moon" ? "#0C0A09" : "#ECE8E1";
   }
   paintSide();
-  $("flip").onclick = function () {
-    root.dataset.side = root.dataset.side === "moon" ? "sun" : "moon";
-    try { localStorage.setItem("nyx_side", root.dataset.side); } catch (e) {}
-    paintSide();
-  };
+  function flip() {
+    var from = root.dataset.side, to = from === "moon" ? "sun" : "moon";
+    root.dataset.side = to;
+    try { localStorage.setItem("nyx_side", to); } catch (e) {}
+    paintSide(); if (window.NyxSplash) NyxSplash(from, to, C.splash);
+    if (home) setTimeout(home.refresh, 400);
+  }
+  $("flip").onclick = flip; $("flip2").onclick = flip;
+
+  /* ---------- home, drawer ---------- */
+  var APPS = (C.apps && C.apps.length ? C.apps : [{ id: "chat", en: "Chat", zh: "聊天" }]), home = null;
+  function show(which) {
+    $("home").hidden = which !== "home"; $("room").hidden = which !== "room";
+    if (which === "home") { $("glyph").textContent = root.dataset.side === "moon" ? "\u263E" : "\u2609"; home.refresh(); }
+    if (which === "room") { toBottom(); }
+    try { history.replaceState(null, "", which === "room" ? "#chat" : "#"); } catch (e) {}
+  }
+  function openApp(a) { closeDrawer(); if (a.id === "chat") show("room"); else if (a.href) location.href = a.href; }
+  $("back").onclick = function () { show("home"); };
+  function openDrawer() { $("drawer").classList.add("open"); $("drawer").setAttribute("aria-hidden", "false"); }
+  function closeDrawer() { $("drawer").classList.remove("open"); $("drawer").setAttribute("aria-hidden", "true"); }
+  $("menu").onclick = openDrawer; $("drawer").querySelector(".sh").onclick = closeDrawer;
+  $("drawerTitle").textContent = C.title || "Nychthemeron"; $("homeTitle").textContent = (C.title || "Nychthemeron").toUpperCase();
+  $("drawerList").innerHTML = APPS.map(function (a, i) { return '<button type="button" data-i="' + i + '">' + esc(a.en) + (a.zh ? "<small>" + esc(a.zh) + "</small>" : "") + "</button>"; }).join("");
+  $("drawerList").querySelectorAll("button").forEach(function (b) { b.onclick = function () { openApp(APPS[+b.dataset.i]); }; });
+  // swipe right opens the drawer, left closes it (home only)
+  (function () { var sx = null, sy = 0, H = $("home");
+    H.addEventListener("touchstart", function (e) { sx = e.touches[0].clientX; sy = e.touches[0].clientY; }, { passive: true });
+    document.addEventListener("touchend", function (e) { if (sx === null) return; var t = e.changedTouches[0], dx = t.clientX - sx, dy = t.clientY - sy; sx = null;
+      if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy) * 1.4) return; if (dx > 0 && !H.hidden) openDrawer(); else closeDrawer(); }, { passive: true }); })();
 
   /* ---------- relay ---------- */
   function api(path, opt) {
@@ -131,6 +156,9 @@
       else n.onclick = function () { blobOf(a.url).then(function (u) { var l = document.createElement("a"); l.href = u; l.download = a.name || "file"; l.click(); }); };
     });
   }
+  // a sticker may be .png, .gif, .jpg or .webp — try them in turn, then fall back to the bracketed name
+  var EXT = [".png", ".gif", ".jpg", ".webp"];
+  function stkFallback(im) { var i = 0; im.onerror = function () { if (++i < EXT.length) im.src = C.stickers + im.dataset.n + EXT[i]; else im.replaceWith(document.createTextNode("[" + decodeURIComponent(im.dataset.n) + "]")); }; }
   function build(m) {
     var me = m.from === "human", kind = m.kind || "reply", el = document.createElement("div");
     el.className = "msg " + (me ? "me" : "ai") + (kind === "thinking" ? " think" : kind === "act" ? " act" : "");
@@ -146,7 +174,7 @@
     }
     el.innerHTML = '<div class="body">' + inner + '<span class="t">' + hm(m.ts) + "</span></div>";
     wireAtts(el, (m.meta && m.meta.attachments) || []);
-    el.querySelectorAll("img.stk").forEach(function (im) { im.onerror = function () { if (!/\.gif$/.test(im.src)) im.src = C.stickers + im.dataset.n + ".gif"; else im.replaceWith(document.createTextNode("[" + decodeURIComponent(im.dataset.n) + "]")); }; });
+    el.querySelectorAll("img.stk").forEach(stkFallback);
     el.ondblclick = function () { setQuote({ id: m.id, who: me ? ME : AI, text: m.text }); };
     return el;
   }
@@ -221,6 +249,17 @@
     });
     this.value = "";
   };
+  /* emoji & stickers: emoji go into the text, a sticker is sent on its own straight away */
+  var EMO = "😀😂🥹😭🥺😳😌😏🙃🤔😴🤤😤😵‍💫🫠🤍🖤💛🧡🔥✨🌙☀️👀🙏👍👏🫶🤝🦀🍜☕️".match(/\p{Extended_Pictographic}(\uFE0F|\u200D\p{Extended_Pictographic}\uFE0F?)*/gu) || [];
+  (function () { var pop = $("emoPop"), stk = (C.stickers && C.stickerList) || [];
+    pop.innerHTML = (stk.length ? '<div class="stks">' + stk.map(function (n) { return '<button type="button" data-s="' + esc(n) + '"><img class="stk" data-n="' + encodeURIComponent(n) + '" alt="' + esc(n) + '" src="' + C.stickers + encodeURIComponent(n) + '.png"></button>'; }).join("") + "</div>" : "") +
+      '<div class="emos">' + EMO.map(function (e) { return '<button type="button" data-e="' + e + '">' + e + "</button>"; }).join("") + "</div>";
+    pop.querySelectorAll("img.stk").forEach(stkFallback);
+    pop.onclick = function (e) { var b = e.target.closest("button"); if (!b) return;
+      if (b.dataset.e) { var s = text.selectionStart || text.value.length; text.value = text.value.slice(0, s) + b.dataset.e + text.value.slice(text.selectionEnd || s); grow(); }
+      else if (b.dataset.s) { var keep = text.value; text.value = "[sticker:" + b.dataset.s + "]"; send(); text.value = keep; grow(); pop.hidden = true; } };
+    $("emo").onclick = function () { pop.hidden = !pop.hidden; };
+    log.addEventListener("click", function () { pop.hidden = true; }); })();
   function send() {
     var t = text.value.trim(); if ((!t && !tray.length) || !key) return;
     if (tray.some(function (x) { return !x.done && x.job; })) { Promise.all(tray.map(function (x) { return x.job; })).then(send); return; }
@@ -241,15 +280,17 @@
     key = k;
     return api("/app/history?limit=200").then(function (d) {
       try { localStorage.setItem("nyx_key", k); } catch (e) {}
-      $("gate").hidden = true; $("room").hidden = false; $("aiName").textContent = AI;
+      $("gate").hidden = true; $("aiName").textContent = AI;
       log.innerHTML = ""; byId.clear(); lastId = 0;
-      (d.messages || []).forEach(put); toBottom(); openStream();
+      (d.messages || []).forEach(put); openStream();
+      if (!home) home = NyxHome($("poster"), APPS, openApp, C.tagline);
+      show(location.hash === "#chat" ? "room" : "home");
     });
   }
   function logout() {
     key = null; if (streamCtl) streamCtl.abort(); streamCtl = null;
     try { localStorage.removeItem("nyx_key"); } catch (e) {}
-    $("room").hidden = true; $("gate").hidden = false;
+    $("room").hidden = true; $("home").hidden = true; $("gate").hidden = false;
   }
   $("gateTitle").textContent = C.title || "Nychthemeron";
   $("gateForm").onsubmit = function (e) {
@@ -259,6 +300,7 @@
   };
   document.addEventListener("visibilitychange", function () { if (!document.hidden && key) { catchUp(); if (!streamCtl) openStream(); } });
 
+  if (window.NyxSplash) NyxSplash(root.dataset.side, root.dataset.side, C.splash);
   var saved = null; try { saved = localStorage.getItem("nyx_key"); } catch (e) {}
   if (saved) enter(saved).catch(function (e) { if (e.auth) logout(); else { $("gate").hidden = true; $("room").hidden = false; $("aiName").textContent = AI; setState(false, "reconnecting…"); setTimeout(function () { enter(saved).catch(function () {}); }, 3000); } });
   else $("gate").hidden = false;
