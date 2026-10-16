@@ -1,0 +1,97 @@
+/* Nychthemeron — one paper, two sides. Day: grey-white paper, ink. Night: black paper, rust. */
+:root{
+  --paper:#ECE8E1; --ink:#221E1C; --soft:#6B625C; --faint:#A39A92;
+  --hair:rgba(34,30,28,.16); --river:rgba(34,30,28,.5);
+  --me:#F7F2E8; --me-ink:#3A2A22; --drop:#221E1C; --accent:#D97757;
+  --serif:"Source Serif 4", Georgia, "Songti SC", "STSong", "Noto Serif SC", "Noto Serif CJK SC", "Source Han Serif SC", "PingFang SC", "Noto Sans CJK SC", "Microsoft YaHei", sans-serif;
+  --mono:ui-monospace, "SF Mono", Menlo, monospace;
+  --pad:18px;
+}
+:root[data-side="moon"]{
+  --paper:#0C0A09; --ink:#E8C9B8; --soft:#BC9684; --faint:#7E6052;
+  --hair:rgba(235,198,178,.14); --river:#7A3420;
+  --me:#2A201C; --me-ink:#EBC6B2; --drop:#C9785A; --accent:#E8784A;
+}
+*{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+html,body{ margin:0; height:100%; background:var(--paper); color:var(--ink); font-family:var(--serif); transition:background-color .8s, color .8s; }
+body{ overflow:hidden; }
+button{ font:inherit; color:inherit; background:none; border:0; padding:0; cursor:pointer; }
+[hidden]{ display:none !important; }
+
+/* paper grain lives on its own layer so it never scrolls */
+#paper{ position:fixed; inset:0; z-index:0; pointer-events:none; background-image:var(--grain); background-size:180px; opacity:1; }
+
+/* ── gate ── */
+#gate{ position:fixed; inset:0; z-index:2; display:grid; place-items:center; padding:var(--pad); }
+.gate-in{ width:min(340px, 100%); text-align:center; }
+.mark{ width:54px; height:54px; margin:0 auto 18px; border-radius:50%; border:1px solid var(--ink); display:grid; place-items:center; }
+.mark i{ width:8px; height:8px; border-radius:50%; background:var(--accent); }
+#gate h1{ margin:0 0 6px; font-weight:400; font-size:28px; letter-spacing:.06em; }
+#gate p{ margin:0 0 20px; color:var(--soft); font-style:italic; font-size:15px; }
+#gateForm{ display:flex; flex-direction:column; gap:12px; }
+#gateKey{ font:inherit; font-size:16px; padding:12px 2px; background:none; border:0; border-bottom:1px solid var(--hair); color:var(--ink); outline:none; text-align:center; }
+#gateKey:focus{ border-bottom-color:var(--ink); }
+#gateForm button{ padding:12px; border-radius:999px; background:var(--ink); color:var(--paper); letter-spacing:.1em; }
+#gate .err{ margin-top:12px; color:var(--accent); font-style:normal; font-size:14px; min-height:1em; }
+
+/* ── room ── */
+#room{ position:fixed; inset:0; z-index:1; display:flex; flex-direction:column; }
+.top{ flex:none; display:flex; align-items:center; justify-content:space-between; padding:calc(env(safe-area-inset-top) + 12px) var(--pad) 10px; }
+.who{ display:flex; flex-direction:column; gap:2px; }
+.who b{ font-weight:400; font-size:19px; letter-spacing:.03em; }
+#state{ font-size:12px; font-style:italic; color:var(--faint); display:flex; align-items:center; gap:6px; }
+#state i{ width:5px; height:5px; border-radius:50%; background:currentColor; }
+#state.on{ color:var(--soft); } #state.on i{ background:var(--accent); }
+.flip{ width:40px; height:40px; border-radius:50%; border:1px solid var(--hair); display:grid; place-items:center; }
+.flip span{ width:14px; height:14px; border-radius:50%; background:var(--ink); transition:box-shadow .6s, background .6s; }
+:root[data-side="moon"] .flip span{ background:transparent; box-shadow:inset -5px -1px 0 0 var(--ink); }
+
+/* the log: a thread down the left (the river), my lines are ink on paper, theirs are cream slips */
+#log{ flex:1 1 auto; overflow-y:auto; overscroll-behavior:contain; padding:10px var(--pad) 18px; position:relative;
+  background-image:linear-gradient(var(--river), var(--river)), var(--marks); background-repeat:repeat-y, repeat-y;
+  background-size:1px 100%, 44px 640px; background-position:calc(var(--pad) + 10px) 0, calc(var(--pad) - 12px) 0; background-attachment:local, local;
+  -webkit-mask-image:linear-gradient(transparent, #000 18px); mask-image:linear-gradient(transparent, #000 18px); }
+#log::-webkit-scrollbar{ display:none; }
+.day{ text-align:center; margin:18px 0 6px; font-style:italic; font-size:12.5px; color:var(--faint); }
+.msg{ position:relative; display:flex; margin-top:14px; }
+.msg.cont{ margin-top:5px; }
+.msg .body{ max-width:min(76%, 520px); font-size:15.5px; line-height:1.66; overflow-wrap:anywhere; }
+.msg .t{ font-family:var(--mono); font-size:9.5px; color:var(--faint); margin-left:8px; white-space:nowrap; }
+
+.msg.ai{ padding-left:32px; }
+.msg.ai::before{ content:""; position:absolute; left:4px; top:5px; width:13px; height:13px; border-radius:50%; background:var(--paper); box-shadow:inset 0 0 0 1.5px var(--ink); }
+.msg.ai.cont::before{ display:none; }
+.msg.ai .body{ border-left:1px solid var(--hair); padding:1px 0 1px 12px; }
+
+.msg.me{ justify-content:flex-end; }
+.msg.me .body{ background:var(--me) var(--grain); background-size:180px; color:var(--me-ink); padding:9px 14px 10px; border-radius:10px; box-shadow:0 1px 4px rgba(60,40,30,.06); }
+.msg.me .t{ display:block; text-align:right; margin:2px 0 0; }
+.msg.me.pending .body{ opacity:.6; }
+
+.msg .q{ display:block; margin-bottom:6px; padding:3px 9px; border-left:2px solid var(--hair); font-size:.86em; opacity:.8; border-radius:3px; background:rgba(127,110,100,.08); }
+
+/* thinking: a quiet italic fold */
+.msg.think .body{ font-style:italic; color:var(--soft); font-size:14px; }
+.msg.think summary{ list-style:none; cursor:pointer; color:var(--faint); font-size:12.5px; }
+.msg.think summary::-webkit-details-marker{ display:none; }
+.msg.act .body{ font-family:var(--mono); font-size:11.5px; color:var(--faint); border-left:0; }
+
+/* writing indicator: three ink dots */
+#typing{ display:flex; gap:4px; padding:12px 0 0 32px; }
+#typing i{ width:4px; height:4px; border-radius:50%; background:var(--soft); animation:ink 1.2s infinite ease-in-out; }
+#typing i:nth-child(2){ animation-delay:.15s; } #typing i:nth-child(3){ animation-delay:.3s; }
+@keyframes ink{ 0%,80%,100%{ opacity:.2; transform:translateY(0); } 40%{ opacity:1; transform:translateY(-2px); } }
+
+/* ── writing line ── */
+.write{ flex:none; position:relative; background:var(--paper) var(--grain); background-size:180px; padding:10px var(--pad) calc(env(safe-area-inset-bottom) + 12px); }
+.write::before{ content:""; position:absolute; left:var(--pad); right:var(--pad); top:0; height:1px; background:var(--hair); }
+.line{ display:flex; align-items:flex-end; gap:12px; }
+#text{ flex:1; resize:none; border:0; outline:none; background:none; color:var(--ink); font:inherit; font-size:16px; line-height:1.5; padding:8px 0; max-height:40vh; caret-color:var(--drop); }
+#text::placeholder{ color:var(--faint); font-style:italic; }
+.drop{ flex:none; width:34px; height:34px; margin-bottom:4px; border-radius:0 50% 50% 50%; transform:rotate(45deg); background:var(--drop); display:grid; place-items:center; transition:transform .2s, box-shadow .3s; }
+.drop svg{ width:16px; height:16px; transform:rotate(-45deg); fill:none; stroke:var(--paper); stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+.drop:active{ transform:rotate(45deg) scale(.9); box-shadow:0 0 0 8px color-mix(in srgb, var(--drop) 14%, transparent); }
+.drop:disabled{ opacity:.4; }
+.quote{ display:flex; align-items:center; gap:8px; margin-bottom:8px; padding:6px 8px 6px 10px; border-left:2px solid var(--hair); background:rgba(127,110,100,.08); border-radius:4px; font-size:13px; color:var(--soft); }
+.quote span{ flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.quote button{ font-size:18px; color:var(--faint); padding:0 4px; }
