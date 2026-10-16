@@ -45,13 +45,15 @@
   function halo() {
     var R = Math.random, g = "";
     for (var r = 90; r < 120; r += 2.4) g += '<circle r="' + r.toFixed(1) + '" fill="none" stroke="rgba(255,255,255,' + (r % 9 < 2.4 ? .14 : .05) + ')" stroke-width=".5"/>';
-    var GULL = "M-30 -5 C-21 -14 -10 -13 -2 -2 C-1 -5 1 -5 2 -2 C10 -13 21 -14 30 -5 C26 -7 23 -7 20 -6 C12 -5 6 -1 2 4 L0 6 L-2 4 C-6 -1 -12 -5 -20 -6 C-23 -7 -26 -7 -30 -5 Z";
-    var SWIFT = "M24 -1 C20 -4 14 -4 8 -3 C2 -12 -6 -24 -16 -32 C-11 -24 -7 -13 -6 -5 C-12 -4 -18 -3 -24 -7 L-31 -9 C-26 -4 -24 0 -22 2 C-24 5 -28 9 -32 12 L-24 9 C-18 6 -12 5 -6 5 C-8 12 -12 20 -18 26 C-6 20 2 12 6 5 C12 5 18 4 24 1 L28 0 Z";
-    function bird(x, y, sc, rot, col, k) { var d = (1.1 + R() * .6).toFixed(2), sh = k % 2 ? SWIFT : GULL;
-      return '<g transform="translate(' + x + " " + y + ") rotate(" + rot + ") scale(" + sc + ')"><g><animateTransform attributeName="transform" type="translate" values="0 0;' + (R() * 6 - 3).toFixed(1) + " " + (-3 - R() * 4).toFixed(1) + ';0 0" dur="' + (5 + R() * 4).toFixed(1) + 's" repeatCount="indefinite"/>' +
-        '<path d="' + sh + '" fill="' + col + '"><animateTransform attributeName="transform" type="scale" values="1 1;1 .45;1 1" dur="' + d + 's" begin="-' + (R() * 2).toFixed(2) + 's" repeatCount="indefinite"/></path></g></g>'; }
-    var back = bird(-128, -78, 1.5, -14, "var(--bird)", 0) + bird(118, -112, .9, 12, "var(--bird)", 1) + bird(-150, 40, 1.1, 8, "var(--bird2)", 1);
-    var front = bird(-112, 68, 1.9, -6, "var(--bird)", 0) + bird(132, 22, 1.4, 20, "var(--bird2)", 1) + bird(100, 108, .8, -10, "var(--bird)", 0);
+    // birds fly side-on, one wing up and one down — gull gliding, fork-tailed swallow, dove with both wings raised
+    var BIRD = ["M22 1 C19 -3 15 -5 12 -4 L10 -3 C12 -12 4 -24 -6 -32 C-6 -22 -8 -12 -9 -4 L-16 -3 L-26 -7 C-28 -3 -28 3 -26 7 L-16 4 L-8 5 C-9 10 -9 20 -12 30 C2 22 6 10 -2 4 L12 3 C16 3 19 2 22 1 Z",
+      "M20 0 C17 -3 13 -4 9 -3 L7 -3 C2 -9 -8 -16 -18 -20 C-12 -15 -9 -8 -6 -2 L-12 0 L-30 -8 L-16 1 L-28 8 L-12 3 L-6 3 C-9 10 -13 16 -16 22 C-10 16 -4 9 2 4 C8 4 14 3 20 0 Z",
+      "M22 -2 C19 -5 16 -6 13 -5 L11 -5 C16 -12 18 -22 16 -32 L12 -24 L12 -29 L8 -18 L7 -23 L3 -8 L1 -7 C0 -16 -4 -26 -8 -34 L-10 -26 L-13 -30 L-12 -18 L-15 -22 L-12 -6 L-17 -2 L-27 -3 C-29 0 -29 4 -27 7 L-16 6 C-6 8 6 6 14 2 C18 0 20 -1 22 -2 Z"];
+    function bird(x, y, sc, rot, col, k, flip, op) {
+      return '<g transform="translate(' + x + " " + y + ") rotate(" + rot + ") scale(" + (flip ? -sc : sc) + " " + sc + ')" opacity="' + (op || 1) + '"><g><animateTransform attributeName="transform" type="translate" values="0 0;' + (R() * 6 - 3).toFixed(1) + " " + (-3 - R() * 4).toFixed(1) + ';0 0" dur="' + (5 + R() * 4).toFixed(1) + 's" repeatCount="indefinite"/>' +
+        '<path d="' + BIRD[k] + '" fill="' + col + '"><animateTransform attributeName="transform" type="scale" values="1 1;1 .55;1 1" dur="' + (1.3 + R() * .7).toFixed(2) + 's" begin="-' + (R() * 2).toFixed(2) + 's" repeatCount="indefinite"/></path></g></g>'; }
+    var back = bird(-128, -92, 1.0, -18, "var(--bird)", 2, 0, .62) + bird(126, -112, .62, 14, "var(--bird2)", 1, 1, .7) + bird(-150, 36, .85, 26, "var(--bird)", 0, 1, .55);
+    var front = bird(-110, 74, 1.75, -10, "var(--bird)", 2, 0, 1) + bird(136, 20, 1.15, 28, "var(--bird2)", 1, 1, 1) + bird(98, 116, 1.0, -22, "var(--bird)", 0, 1, .95);
     var sp = ""; for (var i = 0; i < 26; i++) { var a = R() * 6.283, rr = 120 + R() * 50; sp += '<circle cx="' + (Math.cos(a) * rr).toFixed(1) + '" cy="' + (Math.sin(a) * rr).toFixed(1) + '" r="' + (.6 + R() * 1.4).toFixed(2) + '" fill="var(--spark)"><animate attributeName="opacity" values="0;1;0" dur="' + (2 + R() * 3).toFixed(1) + 's" begin="-' + (R() * 3).toFixed(1) + 's" repeatCount="indefinite"/></circle>'; }
     return '<svg viewBox="-170 -170 340 340"><defs><radialGradient id="glow"><stop offset=".55" stop-color="var(--glow)" stop-opacity=".55"/><stop offset="1" stop-color="var(--glow)" stop-opacity="0"/></radialGradient>' +
       '<clipPath id="labB"><circle r="84"/></clipPath></defs>' +
