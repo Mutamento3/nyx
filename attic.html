@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#ECE8E1">
+<title>Attic</title>
+<link href="fonts/source-serif-4.css" rel="stylesheet">
+<script>
+  try { document.documentElement.dataset.side = localStorage.getItem("nyx_side") === "moon" ? "moon" : "sun"; } catch (e) { document.documentElement.dataset.side = "sun"; }
+</script>
+<link rel="stylesheet" href="app.css">
+<link rel="stylesheet" href="attic.css">
+</head>
+<body class="attic">
+<div id="paper" aria-hidden="true"></div>
+<div id="star" aria-hidden="true"></div>
+<svg id="drops" aria-hidden="true" preserveAspectRatio="xMidYMid slice"></svg>
+
+<div class="ap" id="ap">
+  <header class="at">
+    <button class="back" id="back" type="button" aria-label="Home"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button>
+    <button class="sel" id="selBtn" type="button">Select</button>
+  </header>
+  <h1>Attic</h1>
+  <p class="sub" id="sub">Things kept for later.</p>
+  <nav class="cats" id="cats"></nav>
+  <div class="catbar" id="catbar" hidden><button type="button" id="ren">Rename</button><button type="button" id="rm">Remove shelf</button></div>
+  <div class="grid" id="grid"></div>
+</div>
+
+<div class="selbar" id="selbar" hidden>
+  <span id="selN">0 picked</span>
+  <button type="button" id="bMove">Move to…</button>
+  <button type="button" id="bDel">Throw out</button>
+</div>
+
+<button class="add drop-btn" id="add" type="button" aria-label="Bring things up"><svg viewBox="0 0 24 24"><path d="M12 18V6M6 12h12"/></svg></button>
+<input type="file" id="file" accept="image/*" multiple hidden>
+
+<section class="viewer" id="viewer" hidden>
+  <button class="vx" id="vx" type="button" aria-label="Close">×</button>
+  <div class="vimg" id="vimg"></div>
+  <div class="vfoot"><span class="vcat" id="vcat"></span><input id="vnote" placeholder="a note on this one…" maxlength="200"></div>
+</section>
+
+<div class="sheet" id="sheet" hidden><div class="sh-in" id="shIn"></div></div>
+<div class="toast" id="toast"></div>
+
+<script src="config.js"></script>
+<script src="paper.js"></script>
+<script src="attic.js"></script>
+</body>
+</html>

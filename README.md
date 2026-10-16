@@ -13,6 +13,9 @@ Flip the coin in the corner and the whole page turns over.
 - `index.html`, `app.css`, `app.js` — the chat: key gate, history, live streamed replies, quotes, attachments, stickers, emoji.
 - `home.js` — the home poster: one ink river, entries hung on alternating banks, each with a small drawing from inside a language model.
 - `splash.js` — the opening card: first letters fall into a column, each pulls its word out to the right; on a flip the words turn over.
+- `listen.html/.js/.css` — Listen: a record on the paper, a glass player card, Together / Alone, and a now-playing page with lyrics.
+- `attic.html/.js/.css` — Attic: bring up a pile of pictures, make your own shelves, sort and annotate them.
+- `paper.js` — the paper every page sits on (grain, ink drops).
 - `config.js` — everything you change for your own install.
 
 ## The night side
@@ -32,6 +35,19 @@ The page expects these endpoints under `config.relay`, all with `Authorization: 
 | POST | `/app/send` | `{ text, side, quote?, attachments? }` → `{ id }` |
 | POST | `/app/upload?name=` | raw file body → `{ url, name, size, mime, kind }` |
 | GET | `/uploads/<name>` | the uploaded file |
+
+Optional, for the other rooms:
+
+| method | path | |
+|---|---|---|
+| GET | `/app/attic` | `{ cats: [{ id, name }], items: [{ file, cat, note, picks? }] }` |
+| POST | `/app/attic/cat` | `{ op: "add", name }` → `{ cat }` · `{ op: "rename", id, name }` · `{ op: "del", id }` |
+| POST | `/app/attic/item` | `{ op: "add" \| "move", files, cat }` · `{ op: "del", files }` · `{ op: "note", file, note }` |
+| POST | `/app/music/*` | Listen with NetEase — see `docs/listen-netease.md` |
+| POST | `/app/music/now` | `{ id, name, artist, state, together }` — what's playing, so the companion can listen along |
+| POST | `/app/clawd` | see **Clawd** below |
+
+`picks` is a list of who marked a picture; anything non-empty shows a small star (handy if your companion can mark things it likes).
 
 ## Listen
 
