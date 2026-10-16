@@ -37,8 +37,8 @@
   function drops() {
     var W = 390, H = 844, s = "", R = Math.random, n = 9 + Math.floor(R() * 6);
     for (var i = 0; i < n; i++) {
-      var r = 3 + Math.pow(R(), 2.2) * 26, x = R() * W, y = R() * H, rot = 45 + (R() - .5) * 30, o = (.05 + R() * .09).toFixed(3);
-      s += '<path transform="translate(' + x.toFixed(1) + " " + y.toFixed(1) + ") rotate(" + rot.toFixed(1) + ") scale(" + r.toFixed(2) + ')" d="M0 -1 A1 1 0 1 1 -1 0 L-1 -1 Z" fill="currentColor" fill-opacity="' + o + '"/>';
+      var r = 2 + Math.pow(R(), 2.4) * 11, x = R() * W, y = R() * H, rot = 45 + (R() - .5) * 30, o = (.05 + R() * .09).toFixed(3);
+      s += '<path transform="translate(' + x.toFixed(1) + " " + y.toFixed(1) + ") scale(.6 1) rotate(" + rot.toFixed(1) + ") scale(" + r.toFixed(2) + ')" d="M0 -1 A1 1 0 1 1 -1 0 L-1 -1 Z" fill="currentColor" fill-opacity="' + o + '"/>';
     }
     var el = $("drops"); el.setAttribute("viewBox", "0 0 " + W + " " + H); el.innerHTML = s;
   }
