@@ -33,6 +33,10 @@ The page expects these endpoints under `config.relay`, all with `Authorization: 
 | POST | `/app/upload?name=` | raw file body → `{ url, name, size, mime, kind }` |
 | GET | `/uploads/<name>` | the uploaded file |
 
+## Listen
+
+See [`docs/listen-netease.md`](docs/listen-netease.md) for playing from your own NetEase Cloud Music account — one account is enough.
+
 ## Clawd
 
 The little pixel crab on the home poster greets you by the hour (and in the night voice on the night side),
