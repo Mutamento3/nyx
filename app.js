@@ -103,8 +103,10 @@
 
   /* ---------- rendering ---------- */
   function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+  var STK = /\[(?:sticker|表情)[:：]([^\]\n]{1,40})\]/g;
   function rich(s) {
-    return esc(s || "").replace(/https?:\/\/[^\s<]+[^\s<.,;:!?)\]'"，。！？）]/g, function (u) { return '<a href="' + u + '" target="_blank" rel="noopener">' + u + "</a>"; }).replace(/\n/g, "<br>");
+    return esc(s || "")
+      .replace(STK, function (all, name) { return C.stickers ? '<img class="stk" alt="' + name + '" src="' + C.stickers + encodeURIComponent(name) + '.png" data-n="' + encodeURIComponent(name) + '">' : all; }).replace(/https?:\/\/[^\s<]+[^\s<.,;:!?)\]'"，。！？）]/g, function (u) { return '<a href="' + u + '" target="_blank" rel="noopener">' + u + "</a>"; }).replace(/\n/g, "<br>");
   }
   function hm(ts) { var d = new Date(ts); return isNaN(d) ? "" : String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"); }
   function dayOf(ts) { var d = new Date(ts); return isNaN(d) ? "" : d.toDateString(); }
@@ -115,14 +117,36 @@
     return d.toLocaleDateString(undefined, { month: "short", day: "numeric", weekday: "short" });
   }
 
+  // uploads sit behind the key, so images are fetched with the header and shown from a local blob (the key never goes in a URL)
+  var blobs = new Map();
+  function blobOf(url) {
+    if (!blobs.has(url)) blobs.set(url, fetch(url, { headers: { "Authorization": "Bearer " + key } }).then(function (r) { if (!r.ok) throw 0; return r.blob(); }).then(URL.createObjectURL));
+    return blobs.get(url);
+  }
+  function wireAtts(el, atts) {
+    el.querySelectorAll(".att [data-i]").forEach(function (n) {
+      var a = atts[+n.dataset.i]; if (!a || !a.url) return;
+      if (n.tagName === "IMG") { blobOf(a.url).then(function (u) { n.src = u; n.onload = function () { if (nearBottom(300)) toBottom(); }; }).catch(function () { n.alt = "image unavailable"; });
+        n.onclick = function () { var z = document.createElement("div"); z.id = "zoom"; z.innerHTML = '<img src="' + n.src + '">'; z.onclick = function () { z.remove(); }; document.body.appendChild(z); }; }
+      else n.onclick = function () { blobOf(a.url).then(function (u) { var l = document.createElement("a"); l.href = u; l.download = a.name || "file"; l.click(); }); };
+    });
+  }
   function build(m) {
     var me = m.from === "human", kind = m.kind || "reply", el = document.createElement("div");
     el.className = "msg " + (me ? "me" : "ai") + (kind === "thinking" ? " think" : kind === "act" ? " act" : "");
     el.dataset.id = m.id; el.dataset.from = m.from; el.dataset.ts = m.ts;
     var q = m.meta && m.meta.quote, inner = q ? '<span class="q">' + esc((q.who ? q.who + "  " : "") + (q.text || "")) + "</span>" : "";
     if (kind === "thinking") inner += '<details><summary>thinking…</summary>' + rich(m.text) + "</details>";
-    else inner += rich(m.text);
+    else {
+      var atts = (m.meta && m.meta.attachments) || [];
+      if (atts.length) inner += '<div class="att">' + atts.map(function (a, i) { return a.kind === "image" ? '<img data-i="' + i + '" alt="">' : '<span class="file" data-i="' + i + '">' + esc(a.name || "file") + "</span>"; }).join("") + "</div>";
+      inner += rich(m.text);
+      if (C.stickers && !atts.length && String(m.text || "").replace(STK, "").trim() === "" && STK.test(m.text || "")) el.classList.add("only-stk");
+      STK.lastIndex = 0;
+    }
     el.innerHTML = '<div class="body">' + inner + '<span class="t">' + hm(m.ts) + "</span></div>";
+    wireAtts(el, (m.meta && m.meta.attachments) || []);
+    el.querySelectorAll("img.stk").forEach(function (im) { im.onerror = function () { if (!/\.gif$/.test(im.src)) im.src = C.stickers + im.dataset.n + ".gif"; else im.replaceWith(document.createTextNode("[" + decodeURIComponent(im.dataset.n) + "]")); }; });
     el.ondblclick = function () { setQuote({ id: m.id, who: me ? ME : AI, text: m.text }); };
     return el;
   }
@@ -181,11 +205,30 @@
     if (e.key === "Enter" && !e.shiftKey && !e.isComposing && e.keyCode !== 229) { e.preventDefault(); send(); }
   });
   sendBtn.onclick = send;
+  /* attachments: pick → upload right away → they ride along with the next send */
+  var tray = [], trayEl = $("tray");
+  $("clip").onclick = function () { $("file").click(); };
+  $("file").onchange = function () {
+    Array.prototype.forEach.call(this.files, function (f) {
+      var it = { name: f.name, done: null, el: document.createElement("div") };
+      it.el.className = "it up"; it.el.innerHTML = '<button type="button" aria-label="Remove">×</button>' + (f.type.indexOf("image/") ? esc(f.name.slice(0, 14)) : "");
+      if (!f.type.indexOf("image/")) it.el.style.backgroundImage = "url(" + URL.createObjectURL(f) + ")";
+      it.el.querySelector("button").onclick = function () { tray = tray.filter(function (x) { return x !== it; }); it.el.remove(); trayEl.hidden = !tray.length; };
+      trayEl.appendChild(it.el); trayEl.hidden = false; tray.push(it);
+      it.job = fetch(RELAY + "/app/upload?name=" + encodeURIComponent(f.name), { method: "POST", headers: { "Authorization": "Bearer " + key, "Content-Type": f.type || "application/octet-stream" }, body: f })
+        .then(function (r) { if (!r.ok) throw new Error("upload " + r.status); return r.json(); })
+        .then(function (a) { it.done = a; it.el.classList.remove("up"); }, function () { it.el.classList.remove("up"); it.el.style.outline = "1px solid var(--accent)"; });
+    });
+    this.value = "";
+  };
   function send() {
-    var t = text.value.trim(); if (!t || !key) return;
-    var pending = build({ id: "", from: "human", text: t, ts: new Date().toISOString(), meta: quote ? { quote: quote } : {} });
+    var t = text.value.trim(); if ((!t && !tray.length) || !key) return;
+    if (tray.some(function (x) { return !x.done && x.job; })) { Promise.all(tray.map(function (x) { return x.job; })).then(send); return; }
+    var atts = tray.filter(function (x) { return x.done; }).map(function (x) { return x.done; });
+    tray = []; trayEl.innerHTML = ""; trayEl.hidden = true;
+    var pending = build({ id: "", from: "human", text: t, ts: new Date().toISOString(), meta: Object.assign(quote ? { quote: quote } : {}, { attachments: atts }) });
     pending.classList.add("pending"); pending.dataset.text = t; log.appendChild(pending); keepTyping(); toBottom();
-    var body = { text: t, side: root.dataset.side }; if (quote) body.quote = quote;
+    var body = { text: t, side: root.dataset.side }; if (quote) body.quote = quote; if (atts.length) body.attachments = atts;
     text.value = ""; grow(); setQuote(null);
     api("/app/send", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) })
       .then(function () { setTimeout(catchUp, 1500); })   // the stream normally echoes it; this is the safety net

@@ -42,7 +42,10 @@
 
   <footer class="write">
     <div class="quote" id="quote" hidden><span></span><button type="button" aria-label="Remove quote">×</button></div>
+    <div class="tray" id="tray" hidden></div>
     <div class="line">
+      <button class="clip" id="clip" type="button" aria-label="Attach"><svg viewBox="0 0 24 24"><path d="M20 11.5l-8.2 8.2a4.8 4.8 0 0 1-6.8-6.8l8.6-8.6a3.2 3.2 0 0 1 4.5 4.5l-8.5 8.5a1.6 1.6 0 0 1-2.3-2.3l7.8-7.8"/></svg></button>
+      <input type="file" id="file" multiple hidden>
       <textarea id="text" rows="1" placeholder="Write a letter…" enterkeyhint="send"></textarea>
       <button class="drop" id="send" type="button" aria-label="Send"><svg viewBox="0 0 24 24"><path d="M12 18V6M7 11l5-5 5 5"/></svg></button>
     </div>

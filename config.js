@@ -5,5 +5,7 @@ window.NYX = {
   relay: "/relay",
   aiName: "Companion",
   meName: "Me",
-  title: "Nychthemeron"
+  title: "Nychthemeron",
+  // stickers: folder with <name>.png (or .gif) — [sticker:name] in a message shows it. Leave null for none.
+  stickers: null
 };
