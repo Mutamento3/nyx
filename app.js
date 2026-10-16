@@ -43,7 +43,7 @@
         (striped ? 'fill="url(#nyx_s)" stroke="currentColor" stroke-width="' + (.6 / r).toFixed(3) + '" stroke-opacity=".35" fill-opacity="1" opacity="' + (.35 + R() * .3).toFixed(2) + '"'
                  : 'fill="currentColor" fill-opacity="' + (.1 + R() * .14).toFixed(3) + '" filter="url(#nyx_f)"') + '/>'; }
     var defs = '<defs><filter id="nyx_f" x="-40%" y="-20%" width="180%" height="140%"><feTurbulence type="fractalNoise" baseFrequency="1.4" numOctaves="2" seed="7" result="n"/><feColorMatrix in="n" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -2.2 1.9" result="a"/><feComposite in="SourceGraphic" in2="a" operator="in"/></filter>' +
-      '<pattern id="nyx_s" patternUnits="userSpaceOnUse" width="6" height="3.2"><rect width="6" height="1" fill="currentColor"/></pattern></defs>';
+      '<pattern id="nyx_s" patternUnits="userSpaceOnUse" width="4" height=".34"><rect x="-2" width="8" height=".11" fill="currentColor"/></pattern></defs>';
     var el = $("drops"); el.setAttribute("viewBox", "0 0 " + W + " " + H); el.innerHTML = defs + s;
   }
   drops();
