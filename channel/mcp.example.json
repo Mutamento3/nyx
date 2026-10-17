@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "companion": {
+      "command": "/home/YOU/.bun/bin/bun",
+      "args": ["/home/YOU/nyx/channel/server.ts"],
+      "env": { "RELAY_STATE_DIR": "/home/YOU/.claude/channels/companion" }
+    }
+  }
+}

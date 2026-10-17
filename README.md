@@ -27,6 +27,10 @@ and nothing more. How much of each it leans into is up to the model and its own 
 
 ## Relay
 
+A working relay ships in [`relay/`](relay/) with its Claude Code channel plugin in [`channel/`](channel/): a modified version of
+[Tidal Echo](https://github.com/anhe2021212-spec/Tidal_Echo) by anhe2021212-spec, licensed **GNU AGPL v3** (see `relay/NOTICE`, `relay/CHANGES.md`).
+The web pages here are MIT; they only talk to the relay over HTTP, so you can also point them at a relay of your own.
+
 The page expects these endpoints under `config.relay`, all with `Authorization: Bearer <key>`:
 
 | method | path | |
@@ -47,6 +51,7 @@ Optional, for the other rooms:
 | POST | `/app/music/*` | Listen with NetEase — see `docs/listen-netease.md` |
 | POST | `/app/music/now` | `{ id, name, artist, state, together }` — what's playing, so the companion can listen along |
 | POST | `/app/clawd` | see **Clawd** below |
+| GET | `/app/usage` | `{ five_hour: { used, resets_at }, seven_day: {…} }` — Claude Code usage limits, see `relay/README.md` |
 
 `picks` is a list of who marked a picture; anything non-empty shows a small star (handy if your companion can mark things it likes).
 
@@ -95,3 +100,7 @@ async def clawd(request: Request):
 ```
 
 Give him whatever persona you like in `CLAWD`. If the call fails, the bubble says so and lets you try again.
+
+## License
+
+The web pages: MIT, see [LICENSE](LICENSE). `relay/` and `channel/`: GNU AGPL v3, a modified version of Tidal Echo — see `relay/NOTICE`.

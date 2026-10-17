@@ -1,0 +1,29 @@
+Companion Channel / Tidal Echo
+
+Current project license
+-----------------------
+
+Copyright (C) 2026 Companion Channel contributors.
+
+Project material for which this repository's contributors have licensing
+authority, and new modifications first published from 2026-08-16 onward, are
+licensed under the GNU Affero General Public License v3.0 unless a file says
+otherwise. See LICENSE.
+
+Earlier revisions of this repository were published under the MIT License.
+This change records the license used for current and future project releases;
+it does not rewrite the license text that accompanied historical revisions.
+
+Copyright and attribution notices belonging to third-party material, if any,
+remain applicable to that material.
+
+Nyx modifications
+-----------------
+
+The files in this folder and in ../channel are a modified version of
+Tidal Echo (https://github.com/anhe2021212-spec/Tidal_Echo, commit 860e5de)
+by anhe2021212-spec. Modifications copyright (C) 2026 StarFold146, also
+licensed under the GNU AGPL v3. What changed is listed in CHANGES.md.
+
+The Nyx web pages in the repository root are separate work under the MIT
+License; they only talk to this relay over HTTP.

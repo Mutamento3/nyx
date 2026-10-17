@@ -1,0 +1,19 @@
+# Keeps your companion's Claude Code session running and starts it at boot.
+# Copy to /etc/systemd/system/, replace YOU and the paths, then:
+#   sudo systemctl daemon-reload && sudo systemctl enable --now claude-companion
+# Part of the Nyx relay (modified Tidal Echo), GNU AGPL v3.
+[Unit]
+Description=Claude Code companion session
+After=network-online.target companion-relay.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=YOU
+ExecStart=/home/YOU/nyx/channel/start-channel.sh companion /home/YOU/companion /home/YOU/nyx/channel/mcp.example.json
+ExecStop=/usr/bin/tmux kill-session -t companion
+RemainAfterExit=yes
+TimeoutStartSec=120
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,21 @@
+#!/bin/bash
+# Start Claude Code in a detached tmux session with the companion channel loaded,
+# and click through the prompts newer Claude Code shows for development channels.
+# Usage: start-channel.sh <tmux-session> <folder> <mcp-config> [model]
+#   folder      where your companion's CLAUDE.md (persona + rules) lives
+#   mcp-config  a JSON like mcp.example.json that registers this channel as "companion"
+# Part of the Nyx relay (modified Tidal Echo), GNU AGPL v3.
+S=$1; DIR=$2; CFG=$3; MODEL=${4:-}
+[ -n "$S" ] && [ -d "$DIR" ] && [ -f "$CFG" ] || { echo "usage: $0 <session> <folder> <mcp-config> [model]"; exit 2; }
+M=""; [ -n "$MODEL" ] && M="--model $MODEL"
+cd "$DIR" || exit 1
+tmux new-session -d -s "$S" -x 200 -y 50 "claude --dangerously-load-development-channels server:companion --mcp-config $CFG --permission-mode auto $M"
+for i in $(seq 1 30); do
+  sleep 2
+  pane=$(tmux capture-pane -pt "$S" 2>/dev/null) || exit 1
+  if grep -q "I am using this for local development" <<<"$pane"; then tmux send-keys -t "$S" Enter
+  elif grep -q "Try the new fullscreen renderer" <<<"$pane"; then tmux send-keys -t "$S" Down Enter
+  elif grep -q "auto mode on" <<<"$pane" && ! grep -q "Enter to confirm" <<<"$pane"; then exit 0
+  fi
+done
+echo "Claude Code didn't settle in 60s — run: tmux attach -t $S"; exit 1

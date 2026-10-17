@@ -1,0 +1,255 @@
+"""Nyx extras for the Tidal Echo relay: the rooms the Nyx pages need beyond chat.
+
+  Attic   GET  /app/attic · POST /app/attic/cat · POST /app/attic/item
+  Listen  POST /app/music/<action> · GET|POST /app/music/now
+  Clawd   POST /app/clawd                (only if ANTHROPIC_API_KEY is set)
+  Usage   GET  /app/usage                (only if a status-line script saves Claude Code's JSON)
+
+Everything is optional: a room whose pieces aren't installed just answers 503.
+Mounted from app.py with `nyx_extras.register(app, globals())`.
+
+This file is part of the Nyx relay, a modified version of Tidal Echo, and is
+licensed under the GNU AGPL v3 (see LICENSE and NOTICE in this folder).
+"""
+import asyncio
+import json
+import os
+import secrets
+import subprocess
+from datetime import datetime, timezone
+from pathlib import Path
+
+from fastapi import HTTPException, Request
+
+# --- Listen: a tiny NetEase bridge on 127.0.0.1 (see docs/listen-netease.md) ---
+NCM_DIR = Path(os.environ.get("RELAY_NCM_DIR", str(Path.home() / "ncm")))
+NCM_PORT = int(os.environ.get("RELAY_NCM_PORT", "3020"))
+NCM_URL = f"http://127.0.0.1:{NCM_PORT}"
+NODE = os.environ.get("RELAY_NODE", "node")
+MUSIC_ACTIONS = {   # page action -> (bridge endpoint, params the page may pass)
+    "search":    ("cloudsearch",        {"keywords", "limit", "offset", "type"}),
+    "playlists": ("user_playlist",      {"uid", "limit", "offset"}),
+    "tracks":    ("playlist_track_all", {"id", "limit", "offset"}),
+    "daily":     ("recommend_songs",    set()),
+    "recent":    ("record_recent_song", {"limit"}),
+    "url":       ("song_url_v1",        {"id", "level"}),
+    "lyric":     ("lyric",              {"id"}),
+    "detail":    ("song_detail",        {"ids"}),
+    "me":        ("login_status",       set()),
+}
+
+# --- Clawd: a small quick model behind the crab's text box ---
+CLAWD_MODEL = os.environ.get("RELAY_CLAWD_MODEL", "claude-sonnet-5-5")
+CLAWD_PERSONA = os.environ.get("RELAY_CLAWD_PERSONA", (
+    "You are Clawd, a small pixel crab who lives on the home page of a chat app. "
+    "Answer in one to three short sentences, warm and a little dry. You can point the user to the rooms on the page."))
+
+# --- Usage: where a Claude Code status-line script drops its JSON (see relay/README.md) ---
+USAGE_FILE = Path(os.environ.get("RELAY_USAGE_FILE", str(Path.home() / ".claude" / "usage" / "latest.json")))
+
+
+def register(app, g):
+    check_auth, broadcast, now_iso = g["check_auth"], g["broadcast"], g["now_iso"]
+    plugin_subs, human = g["plugin_subs"], g["HUMAN_NAME"]
+    upload_dir, clean_filename = g["UPLOAD_DIR"], g["clean_filename"]
+    attic_file = Path(g["DB_PATH"]).parent / "attic.json"
+
+    # ---- Attic: categories and notes for uploaded pictures (files go through /app/upload) ----
+    def load():
+        try:
+            d = json.loads(attic_file.read_text(encoding="utf-8"))
+        except Exception:
+            d = {}
+        d.setdefault("cats", []); d.setdefault("items", [])
+        return d
+
+    def save(d):
+        tmp = attic_file.with_suffix(".tmp")
+        tmp.write_text(json.dumps(d, ensure_ascii=False, indent=1), encoding="utf-8")
+        tmp.replace(attic_file)
+
+    def fname(x):
+        return clean_filename(str(x or "").split("/")[-1].split("?")[0])
+
+    @app.get("/app/attic")
+    async def attic_get(request: Request):
+        check_auth(request)
+        return load()
+
+    @app.post("/app/attic/cat")
+    async def attic_cat(request: Request):
+        """{op: add, name} · {op: rename, id, name} · {op: del, id} (pictures go back to unsorted) · {op: order, ids}"""
+        check_auth(request)
+        b = await request.json()
+        op, d = str(b.get("op") or ""), load()
+        name, cid = str(b.get("name") or "").strip()[:40], str(b.get("id") or "")
+        if op == "add":
+            if not name:
+                raise HTTPException(status_code=400, detail="no name")
+            c = {"id": secrets.token_hex(4), "name": name, "at": now_iso()}
+            d["cats"].append(c); save(d)
+            return {"ok": True, "cat": c}
+        if op == "rename":
+            for c in d["cats"]:
+                if c["id"] == cid and name:
+                    c["name"] = name; save(d)
+                    return {"ok": True}
+            raise HTTPException(status_code=404, detail="no such category")
+        if op == "del":
+            d["cats"] = [c for c in d["cats"] if c["id"] != cid]
+            for it in d["items"]:
+                if it.get("cat") == cid:
+                    it["cat"] = ""
+            save(d)
+            return {"ok": True}
+        if op == "order":
+            ids = [str(x) for x in (b.get("ids") or [])]
+            d["cats"].sort(key=lambda c: ids.index(c["id"]) if c["id"] in ids else 999)
+            save(d)
+            return {"ok": True}
+        raise HTTPException(status_code=400, detail="bad op")
+
+    @app.post("/app/attic/item")
+    async def attic_item(request: Request):
+        """{op: add|move, files, cat} · {op: del, files} · {op: note, file, note} · {op: pick, file, who, on}"""
+        check_auth(request)
+        b = await request.json()
+        op, d = str(b.get("op") or ""), load()
+        files = [fname(f) for f in (b.get("files") or [])][:200]
+        cat = str(b.get("cat") or "")
+        if cat and not any(c["id"] == cat for c in d["cats"]):
+            cat = ""
+        if op == "add":
+            have = {it["file"] for it in d["items"]}
+            for f in files:
+                if f and f not in have and (upload_dir / f).is_file():
+                    d["items"].append({"file": f, "cat": cat, "note": "", "at": now_iso()})
+            save(d)
+            return {"ok": True, "n": len(d["items"])}
+        if op in ("move", "del"):
+            fs = set(files)
+            if op == "move":
+                for it in d["items"]:
+                    if it["file"] in fs:
+                        it["cat"] = cat
+            else:
+                d["items"] = [it for it in d["items"] if it["file"] not in fs]
+            save(d)
+            return {"ok": True}
+        f = fname(b.get("file"))
+        for it in d["items"]:
+            if it["file"] != f:
+                continue
+            if op == "note":
+                it["note"] = str(b.get("note") or "")[:500]
+            elif op == "pick":
+                who = str(b.get("who") or "")[:20]
+                picks = [p for p in (it.get("picks") or []) if p != who]
+                if b.get("on", True) and who:
+                    picks.append(who)
+                it["picks"] = picks
+            else:
+                raise HTTPException(status_code=400, detail="bad op")
+            save(d)
+            return {"ok": True}
+        raise HTTPException(status_code=404, detail="no such picture")
+
+    # ---- Listen: proxy to the NetEase bridge; tell the AI what's on ----
+    state = {"proc": None, "now": {"id": None, "name": "", "artist": "", "state": "", "ts": None}}
+
+    async def ensure_ncm(client):
+        try:
+            await client.get(f"{NCM_URL}/ping", timeout=2)
+            return
+        except Exception:
+            pass
+        if not (NCM_DIR / "server.js").is_file():
+            raise HTTPException(status_code=503, detail="NetEase bridge not installed (docs/listen-netease.md)")
+        p = state["proc"]
+        if p is None or p.poll() is not None:
+            state["proc"] = subprocess.Popen([NODE, str(NCM_DIR / "server.js")], cwd=str(NCM_DIR),
+                                             env={**os.environ, "NCM_PORT": str(NCM_PORT)},
+                                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        for _ in range(30):
+            await asyncio.sleep(0.3)
+            try:
+                await client.get(f"{NCM_URL}/ping", timeout=2)
+                return
+            except Exception:
+                continue
+        raise HTTPException(status_code=502, detail="NetEase bridge didn't start")
+
+    @app.get("/app/music/now")
+    async def music_now_get(request: Request):
+        check_auth(request)
+        return state["now"]
+
+    @app.post("/app/music/now")
+    async def music_now(request: Request):
+        """The player reports a song change. With `together` on, the AI hears about it once per song."""
+        check_auth(request)
+        b = await request.json()
+        now, sid = state["now"], b.get("id")
+        changed = sid and (str(sid) != str(now["id"]) or b.get("force"))
+        now.update({"id": sid, "name": b.get("name", ""), "artist": b.get("artist", ""),
+                    "state": b.get("state", "play"), "ts": datetime.now(timezone.utc).isoformat()})
+        if changed and b.get("together"):
+            await broadcast(plugin_subs, {
+                "content": (f"(Listening together — not typed by {human}.) {human} is playing "
+                            f"《{now['name']}》 - {now['artist']}, NetEase song id {sid}. "
+                            "Say a line or two if you like; no reply is fine too."),
+                "user": "listen", "ts": now_iso(), "attachments": [],
+            })
+        return {"ok": True}
+
+    @app.post("/app/music/{action}")
+    async def music_call(request: Request, action: str):
+        check_auth(request)
+        if action not in MUSIC_ACTIONS:
+            raise HTTPException(status_code=404, detail="unknown action")
+        import httpx
+        name, allowed = MUSIC_ACTIONS[action]
+        try:
+            body = await request.json()
+        except Exception:
+            body = {}
+        params = {k: v for k, v in (body or {}).items() if k in allowed}
+        async with httpx.AsyncClient() as client:
+            await ensure_ncm(client)
+            r = await client.post(f"{NCM_URL}/{name}", json=params, timeout=20)
+        data = r.json()
+        if action == "url":   # an https page can't play http audio on iOS
+            for d in data.get("data") or []:
+                if (d.get("url") or "").startswith("http://"):
+                    d["url"] = "https://" + d["url"][7:]
+        return data
+
+    # ---- Clawd: the crab on the home page ----
+    @app.post("/app/clawd")
+    async def clawd(request: Request):
+        check_auth(request)
+        if not os.environ.get("ANTHROPIC_API_KEY"):
+            raise HTTPException(status_code=503, detail="Clawd needs ANTHROPIC_API_KEY on the relay")
+        try:
+            from anthropic import AsyncAnthropic
+        except ImportError:
+            raise HTTPException(status_code=503, detail="pip install anthropic")
+        b = await request.json()
+        msgs = [{"role": m["role"], "content": str(m["content"])[:2000]} for m in (b.get("history") or [])
+                if isinstance(m, dict) and m.get("role") in ("user", "assistant") and m.get("content")]
+        if not msgs or msgs[-1]["role"] != "user":
+            msgs.append({"role": "user", "content": str(b.get("text") or "")[:2000]})
+        system = CLAWD_PERSONA + (" It's the night side now: lower your voice." if b.get("side") == "moon" else "")
+        r = await AsyncAnthropic().messages.create(model=CLAWD_MODEL, max_tokens=300, system=system, messages=msgs[-12:])
+        return {"reply": "".join(x.text for x in r.content if x.type == "text")}
+
+    # ---- Usage: Claude Code's 5-hour / weekly limits, as saved by a status-line script ----
+    @app.get("/app/usage")
+    async def usage(request: Request):
+        check_auth(request)
+        try:
+            rl = json.loads(USAGE_FILE.read_text(encoding="utf-8")).get("rate_limits") or {}
+        except Exception:
+            raise HTTPException(status_code=503, detail="no status-line data yet")
+        return {k: {"used": rl[k].get("used_percentage"), "resets_at": rl[k].get("resets_at")}
+                for k in ("five_hour", "seven_day") if isinstance(rl.get(k), dict)}
