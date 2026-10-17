@@ -1,11 +1,13 @@
 #!/bin/bash
 # Start Claude Code in a detached tmux session with the companion channel loaded,
 # and click through the prompts newer Claude Code shows for development channels.
-# Usage: start-channel.sh <tmux-session> <folder> <mcp-config> [model]
+# Usage: start-channel.sh <tmux-session> <folder> <mcp-config> [model-id or model-file]
 #   folder      where your companion's CLAUDE.md (persona + rules) lives
 #   mcp-config  a JSON like mcp.example.json that registers this channel as "companion"
 # Part of the Nyx relay (modified Tidal Echo), GNU AGPL v3.
 S=$1; DIR=$2; CFG=$3; MODEL=${4:-}
+# model may be an id or a file holding one (e.g. the relay's data dir "model", set from the chat page)
+[ -f "$MODEL" ] && MODEL=$(tr -cd 'A-Za-z0-9._:/-' < "$MODEL")
 [ -n "$S" ] && [ -d "$DIR" ] && [ -f "$CFG" ] || { echo "usage: $0 <session> <folder> <mcp-config> [model]"; exit 2; }
 M=""; [ -n "$MODEL" ] && M="--model $MODEL"
 cd "$DIR" || exit 1

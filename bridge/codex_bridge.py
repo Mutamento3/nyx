@@ -124,6 +124,7 @@ class Bridge:
         self.last_activity = time.time()
         self.nudging = False
         self.seen = 0
+        self.ctx, self.models, self.model, self.default_model = None, [], MODEL, None
 
     # ---- state: thread id + the last relay message we've handled ----
     def state(self):
@@ -224,13 +225,55 @@ class Bridge:
                 err = (turn.get("error") or {}).get("message") or "Codex couldn't answer this time."
                 await self.out({"type": "reply", "text": f"（{err}）"})
             self.turn_done.set()
+        elif method == "thread/tokenUsage/updated":
+            u = p.get("tokenUsage") or {}
+            self.ctx = {"used": (u.get("last") or {}).get("totalTokens"), "size": u.get("modelContextWindow")}
         elif method == "error":
             log("codex error:", json.dumps(p, ensure_ascii=False)[:300])
+
+    async def report(self):
+        """Tell the relay our model, usage limits and context, for the chat page's floating ball."""
+        try:
+            rl = (await self.codex.call("account/rateLimits/read", {}) or {}).get("rateLimits") or {}
+            if not self.models:
+                data = (await self.codex.call("model/list", {}) or {}).get("data") or []
+                self.models = [{"id": m.get("id"), "name": m.get("displayName") or m.get("id")} for m in data]
+                self.default_model = next((m.get("id") for m in data if m.get("isDefault")), None)
+        except Exception as e:
+            log("report:", e)
+            return
+        limits = []
+        for key in ("primary", "secondary"):
+            w = rl.get(key)
+            if w:
+                mins = w.get("windowDurationMins") or 0
+                label = "5h" if mins == 300 else "week" if mins == 10080 else f"{round(mins / 1440)}d" if mins >= 1440 else f"{mins}m"
+                limits.append({"key": key, "label": label, "used": w.get("usedPercent"), "resets_at": w.get("resetsAt")})
+        mid = self.model or self.default_model
+        ctx = self.ctx or {}
+        await self.http.post(f"{RELAY}/app/meter", headers=AUTH, json={
+            "backend": "codex", "plan": rl.get("planType"),
+            "model": {"id": mid, "name": next((m["name"] for m in self.models if m["id"] == mid), mid)},
+            "limits": limits,
+            "context": {"used_pct": round(100 * ctx["used"] / ctx["size"]) if ctx.get("used") and ctx.get("size") else None,
+                        "size": ctx.get("size")},
+            "models": self.models, "model_applies": "next"})
+
+    async def pick_model(self):
+        """The model chosen on the chat page (POST /app/model on the relay), if any."""
+        try:
+            r = await self.http.get(f"{RELAY}/app/model", headers=AUTH)
+            self.model = (r.json() or {}).get("model") or MODEL
+        except Exception:
+            self.model = MODEL
 
     async def run_turn(self, inputs, nudge=False):
         self.nudging = nudge
         self.turn_done.clear()
+        await self.pick_model()
         params = {"threadId": self.thread, "input": inputs}
+        if self.model:
+            params["model"] = self.model
         if EFFORT:
             params["effort"] = EFFORT
         try:
@@ -243,6 +286,7 @@ class Bridge:
         finally:
             self.nudging = False
             self.last_activity = time.time()
+            await self.report()
 
     async def logged_in(self):
         try:
@@ -295,6 +339,7 @@ class Bridge:
         CWD.mkdir(parents=True, exist_ok=True)
         await self.codex.start()
         await self.open_thread()
+        await self.report()
         await asyncio.gather(self.listen_relay(), self.worker(), self.nudger())
 
 

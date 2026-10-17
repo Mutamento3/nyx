@@ -4,6 +4,8 @@
   Listen  POST /app/music/<action> · GET|POST /app/music/now
   Clawd   POST /app/clawd                (only if ANTHROPIC_API_KEY is set)
   Usage   GET  /app/usage                (only if a status-line script saves Claude Code's JSON)
+  Meter   GET  /app/meter · POST /app/meter   model, usage limits and context for the chat page's floating ball
+  Model   GET  /app/model · POST /app/model   which model the companion should use
 
 Everything is optional: a room whose pieces aren't installed just answers 503.
 Mounted from app.py with `nyx_extras.register(app, globals())`.
@@ -16,6 +18,7 @@ import json
 import os
 import secrets
 import subprocess
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -46,6 +49,10 @@ CLAWD_PERSONA = os.environ.get("RELAY_CLAWD_PERSONA", (
 
 # --- Usage: where a Claude Code status-line script drops its JSON (see relay/README.md) ---
 USAGE_FILE = Path(os.environ.get("RELAY_USAGE_FILE", str(Path.home() / ".claude" / "usage" / "latest.json")))
+
+# --- Model: the companion's model, picked from the floating ball ---
+CLAUDE_MODELS = os.environ.get("RELAY_MODEL_OPTIONS",
+                               "claude-opus-5-5:Opus 5.5,claude-sonnet-5-5:Sonnet 5.5,claude-haiku-5-5:Haiku 5.5")
 
 
 def register(app, g):
@@ -242,6 +249,78 @@ def register(app, g):
         system = CLAWD_PERSONA + (" It's the night side now: lower your voice." if b.get("side") == "moon" else "")
         r = await AsyncAnthropic().messages.create(model=CLAWD_MODEL, max_tokens=300, system=system, messages=msgs[-12:])
         return {"reply": "".join(x.text for x in r.content if x.type == "text")}
+
+    # ---- Meter + model: what the floating ball on the chat page shows ----
+    data_dir = Path(g["DB_PATH"]).parent
+    meter_file, model_file = data_dir / "meter.json", data_dir / "model"
+
+    def claude_meter():
+        try:
+            d = json.loads(USAGE_FILE.read_text(encoding="utf-8"))
+        except Exception:
+            return None
+        rl, cw, m = d.get("rate_limits") or {}, d.get("context_window") or {}, d.get("model") or {}
+        labels = {"five_hour": "5h", "seven_day": "week"}
+        return {
+            "backend": "claude",
+            "model": {"id": m.get("id"), "name": m.get("display_name") or m.get("id")},
+            "limits": [{"key": k, "label": labels[k], "used": rl[k].get("used_percentage"),
+                        "resets_at": rl[k].get("resets_at")} for k in labels if isinstance(rl.get(k), dict)],
+            "context": {"used_pct": cw.get("used_percentage"), "size": cw.get("context_window_size")} if cw else None,
+            "models": [{"id": a, "name": b} for a, _, b in (x.partition(":") for x in CLAUDE_MODELS.split(",")) if a],
+            "model_applies": "restart",
+            "ts": time.time(),
+        }
+
+    def current_meter():
+        try:
+            m = json.loads(meter_file.read_text(encoding="utf-8"))
+            if time.time() - float(m.get("ts") or 0) < 3 * 86400:
+                return m
+        except Exception:
+            pass
+        return claude_meter()
+
+    @app.get("/app/meter")
+    async def meter_get(request: Request):
+        check_auth(request)
+        m = current_meter()
+        if not m:
+            raise HTTPException(status_code=503, detail="nothing reported yet")
+        try:
+            m["chosen"] = model_file.read_text(encoding="utf-8").strip() or None
+        except Exception:
+            m["chosen"] = None
+        return m
+
+    @app.post("/app/meter")
+    async def meter_post(request: Request):
+        """A bridge (e.g. bridge/codex_bridge.py) reports its model, limits and context."""
+        check_auth(request)
+        b = await request.json()
+        b["ts"] = time.time()
+        tmp = meter_file.with_suffix(".tmp")
+        tmp.write_text(json.dumps(b, ensure_ascii=False), encoding="utf-8"); tmp.replace(meter_file)
+        return {"ok": True}
+
+    @app.get("/app/model")
+    async def model_get(request: Request):
+        check_auth(request)
+        try:
+            return {"model": model_file.read_text(encoding="utf-8").strip() or None}
+        except Exception:
+            return {"model": None}
+
+    @app.post("/app/model")
+    async def model_post(request: Request):
+        """{model: "<id>"} — a bridge picks it up on the next message; Claude Code on its next start."""
+        check_auth(request)
+        b = await request.json()
+        mid = str(b.get("model") or "").strip()[:80]
+        if mid and not all(c.isalnum() or c in "-._:/" for c in mid):
+            raise HTTPException(status_code=400, detail="bad model id")
+        model_file.write_text(mid, encoding="utf-8")
+        return {"ok": True, "model": mid or None}
 
     # ---- Usage: Claude Code's 5-hour / weekly limits, as saved by a status-line script ----
     @app.get("/app/usage")

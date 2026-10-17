@@ -253,6 +253,79 @@
         pending.onclick = function () { pending.remove(); text.value = t; grow(); send(); }; if (e.auth) logout(); });
   }
 
+  /* ---------- the floating ball: GET /app/meter, POST /app/model ---------- */
+  var meterData = null, meterT = 0;
+  function pct(v) { return v == null ? null : Math.max(0, Math.min(100, Math.round(v))); }
+  function whenReset(t) {
+    if (!t) return "";
+    var d = new Date(t * 1000), now = new Date(), hm = d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false });
+    return d.toDateString() === now.toDateString() ? hm : (d.getMonth() + 1) + "/" + d.getDate() + " " + hm;
+  }
+  function paintOrb() {
+    var m = meterData, orb = $("orb");
+    if (!m) { orb.hidden = true; return; }
+    orb.hidden = false;
+    var ls = m.limits || [], wide = ls[ls.length - 1], narrow = ls.length > 1 ? ls[0] : null;
+    orb.querySelector(".a1").setAttribute("stroke-dasharray", (pct(wide && wide.used) || 0) + " 100");
+    orb.querySelector(".a2").setAttribute("stroke-dasharray", (pct(narrow ? narrow.used : m.context && m.context.used_pct) || 0) + " 100");
+    $("orbNum").textContent = wide && wide.used != null ? pct(wide.used) : "·";
+    orb.classList.toggle("hot", ls.some(function (l) { return l.used >= 90; }));
+  }
+  function ringHTML(l) {
+    var v = pct(l.used) || 0;
+    return '<div class="ring' + (v >= 90 ? " hot" : "") + '"><svg viewBox="0 0 76 76"><circle class="tk" cx="38" cy="38" r="33"/>' +
+      '<circle class="v" cx="38" cy="38" r="33" pathLength="100" stroke-dasharray="' + v + ' 100"/></svg><b>' + (l.used == null ? "–" : v + "%") + "</b>" +
+      "<span>" + esc(l.label || l.key) + "</span><small>" + (l.resets_at ? "resets " + whenReset(l.resets_at) : "") + "</small></div>";
+  }
+  function paintMeter() {
+    var m = meterData; if (!m) return;
+    $("mModel").textContent = (m.model && (m.model.name || m.model.id)) || AI;
+    $("mPlan").textContent = [m.backend, m.plan].filter(Boolean).join(" · ");
+    $("mRings").innerHTML = (m.limits || []).map(ringHTML).join("") || '<p class="none">no usage limits reported</p>';
+    var c = m.context || {}, cv = pct(c.used_pct);
+    $("mCtx").hidden = cv == null;
+    $("mCtx").querySelector("b").style.width = (cv || 0) + "%";
+    $("mCtx").querySelector("em").textContent = cv == null ? "" : cv + "%";
+    var cur = m.chosen || (m.model && m.model.id);
+    $("mList").innerHTML = (m.models || []).map(function (x) {
+      return '<button type="button" data-id="' + esc(x.id) + '"' + (x.id === cur ? ' class="on"' : "") + ">" + esc(x.name || x.id) + "</button>";
+    }).join("");
+    $("mNote").textContent = m.model_applies === "next" ? "A new pick applies from the next message." :
+      m.model_applies === "restart" ? "A new pick applies the next time the session starts." : "";
+  }
+  function loadMeter() {
+    if (!key) return Promise.resolve();
+    return api("/app/meter").then(function (d) { meterData = d; paintOrb(); if (!$("meter").hidden) paintMeter(); }).catch(function () { meterData = null; paintOrb(); });
+  }
+  function openMeter() { paintMeter(); $("meter").hidden = false; loadMeter(); }
+  function closeMeter() { $("meter").hidden = true; }
+  $("meter").addEventListener("click", function (e) { if (e.target === $("meter")) closeMeter(); });
+  $("mList").addEventListener("click", function (e) {
+    var b = e.target.closest("button[data-id]"); if (!b) return;
+    $("mNote").textContent = "…";
+    api("/app/model", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ model: b.dataset.id }) })
+      .then(function () { if (meterData) { meterData.chosen = b.dataset.id; paintMeter(); } setTimeout(loadMeter, 1500); })
+      .catch(function (err) { $("mNote").textContent = /409/.test(err.message) ? "It's busy right now — try again when it has finished." : "Couldn't switch: " + err.message; });
+  });
+  (function drag() {
+    var orb = $("orb"), sx, sy, ox, oy, moved = false;
+    try { var p = JSON.parse(localStorage.getItem("nyx_orb") || "null"); if (p) { orb.style.right = p.r + "px"; orb.style.bottom = p.b + "px"; } } catch (e) {}
+    orb.addEventListener("pointerdown", function (e) { sx = e.clientX; sy = e.clientY; ox = parseFloat(getComputedStyle(orb).right); oy = parseFloat(getComputedStyle(orb).bottom); moved = false; orb.setPointerCapture(e.pointerId); });
+    orb.addEventListener("pointermove", function (e) {
+      if (sx == null) return; var dx = e.clientX - sx, dy = e.clientY - sy;
+      if (!moved && Math.hypot(dx, dy) < 6) return; moved = true;
+      var room = $("room").getBoundingClientRect();
+      orb.style.right = Math.max(6, Math.min(room.width - 58, ox - dx)) + "px";
+      orb.style.bottom = Math.max(70, Math.min(room.height - 120, oy - dy)) + "px";
+    });
+    orb.addEventListener("pointerup", function () {
+      sx = null;
+      if (moved) { try { localStorage.setItem("nyx_orb", JSON.stringify({ r: parseFloat(orb.style.right), b: parseFloat(orb.style.bottom) })); } catch (e) {} }
+      else openMeter();
+    });
+  })();
+  setInterval(function () { if (!document.hidden && !$("room").hidden) loadMeter(); }, 60000);
+
   /* ---------- gate ---------- */
   function enter(k) {
     key = k;
@@ -260,7 +333,7 @@
       try { localStorage.setItem("nyx_key", k); } catch (e) {}
       $("gate").hidden = true; $("aiName").textContent = AI;
       log.innerHTML = ""; byId.clear(); lastId = 0;
-      (d.messages || []).forEach(put); openStream();
+      (d.messages || []).forEach(put); openStream(); loadMeter();
       if (!home) home = NyxHome($("poster"), APPS, openApp, C.tagline, { me: C.meName, drawer: openDrawer, ask: C.clawd && C.clawd.path ? askClawd : null });
       show(location.hash === "#chat" ? "room" : "home");
     });

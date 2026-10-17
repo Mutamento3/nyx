@@ -53,6 +53,8 @@ Optional, for the other rooms:
 | POST | `/app/music/*` | Listen with NetEase — see `docs/listen-netease.md` |
 | POST | `/app/music/now` | `{ id, name, artist, state, together }` — what's playing, so the companion can listen along |
 | POST | `/app/clawd` | see **Clawd** below |
+| GET | `/app/meter` | `{ backend, model:{id,name}, limits:[{label, used, resets_at}], context:{used_pct}, models:[{id,name}], model_applies, chosen }` — the floating ball in the chat |
+| POST | `/app/model` | `{ model }` — switch the companion's model from the floating ball |
 | GET | `/app/usage` | `{ five_hour: { used, resets_at }, seven_day: {…} }` — Claude Code usage limits, see `relay/README.md` |
 
 `picks` is a list of who marked a picture; anything non-empty shows a small star (handy if your companion can mark things it likes).
