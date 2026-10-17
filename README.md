@@ -13,7 +13,7 @@ Flip the coin in the corner and the whole page turns over.
 On a fresh Ubuntu server (22.04 / 24.04), as your normal user:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/StarFold146/nyx/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/StarFold146/nyx/master/install.sh | bash
 ```
 
 It asks whether Claude (your Claude subscription, through Claude Code) or Codex (your ChatGPT subscription) answers,

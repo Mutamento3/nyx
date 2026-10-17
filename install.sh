@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Nyx — one-line install on a fresh Ubuntu server (22.04 / 24.04).
 #
-#   curl -fsSL https://raw.githubusercontent.com/StarFold146/nyx/main/install.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/StarFold146/nyx/master/install.sh | bash
 #   (or, from a clone:  bash install.sh)
 #
 # Options:  --ai claude|codex   --ai-name NAME   --me-name NAME   --dir PATH (default ~/nyx)
