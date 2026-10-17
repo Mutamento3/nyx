@@ -15,8 +15,10 @@
     function branch(x, y, ang, len, w, z, tier, maxTier, parent) {
       var pts = [[x, y]], a = ang, cx = x, cy = y, n = 14;
       for (var i = 1; i <= n; i++) {
-        a += (rnd() - .5) * .16 + (UPR - a) * .085;              // a little wander, carried up and right by the wind
-        if (a < -Math.PI / 2 - .12) a += (-Math.PI / 2 - .12 - a) * .5;   // nothing curls back to the left (Yan)
+        // a little wander; the wind carries only the trunk and the big limbs up and right — from the second tier on,
+        // twigs go their own way so the hand opens (Yan)
+        a += (rnd() - .5) * .16 + (UPR - a) * (tier <= 1 ? .085 : .018);
+        if (tier === 0 && a < -Math.PI / 2 - .12) a += (-Math.PI / 2 - .12 - a) * .5;   // the trunk doesn't curl back left
         if (cx < 60) a += (UPR - a) * .25; if (cx > W - 70) a -= .12;
         cx += Math.cos(a) * len / n; cy += Math.sin(a) * len / n; pts.push([cx, cy]);
       }
@@ -27,7 +29,7 @@
       for (var k = 0; k < kids; k++) {
         var t = tier === 0 ? [.38, .62, .97][k] : [.5, .95][k], j = Math.min(n, Math.round(t * n)), bx = pts[j][0], by = pts[j][1];
         var wl = w + (w * (tier === 0 ? .22 : .5) - w) * j / n, side = (tier + k) % 2 ? 1 : -1;
-        var na = a + side * (.5 + rnd() * .3) * (side < 0 ? .75 : 1);
+        var na = a + side * (tier >= 1 ? .62 + rnd() * .3 : (.5 + rnd() * .3) * (side < 0 ? .75 : 1));   // twigs at least ~35° apart
         if (t > .9 && tier < 2) na = a + (na - a) * .3;   // the last child carries straight on from the parent's tail (Yan)
         me.at = me.at || []; me.at.push(j);
         ends.push.apply(ends, branch(bx, by, na, len * (tier === 0 ? .6 : .62), wl * (tier === 0 ? .62 : .66),
@@ -42,7 +44,7 @@
     // always grow all three tiers so the bones are identical; the night side just doesn't draw the last one
     var tips = branch(74, H + 30, -Math.PI / 2 + .04, 470, 15, 0, 0, 3, null);
     var top = Infinity; P.forEach(function (b) { b.pts.forEach(function (p) { if (p[1] < top) top = p[1]; }); });   // same frame day and night
-    if (night) P = P.filter(function (b) { return b.tier < 3; });
+    // (the night side drops the last tier when drawing; twigs that carry an entry stay)
     var leaves = [];
     if (!night) P.forEach(function (b) {   // (P is already trimmed at night)
       if (b.tier >= 2 && rnd() < .5) { var e = b.pts[b.pts.length - 1], q = b.pts[b.pts.length - 2], a = Math.atan2(e[1] - q[1], e[0] - q[0]);
@@ -72,13 +74,13 @@
       G = grow(side === "moon");
       // entries hang at outer tips that sit apart from each other (Yan: 80 apart)
       // only second-tier tips: they exist by day and by night, so an entry stays on the same twig when the page turns over
-      var far = G.tips.filter(function (t) { return t.b.tier === 2 && t.y < G.H * .66 && t.y > 150 && t.x > 44 && t.x < G.W - 56; }).sort(function (a, b) { return a.y - b.y; });
+      var far = G.tips.filter(function (t) { return t.b.tier >= 2 && t.y < G.H * .7 && t.y > 150 && t.x > 44 && t.x < G.W - 56; }).sort(function (a, b) { return a.y - b.y; });
       picked = [];
       for (var i = 0; i < far.length && picked.length < apps.length; i++) {
         var t = far[i]; if (picked.every(function (p) { return Math.hypot(p.x - t.x, p.y - t.y) > 80; })) picked.push(t);
       }
       if (picked.length < apps.length) {   // not enough room: loosen the spacing, then take first-tier tips too
-        var more = G.tips.filter(function (t) { return t.b.tier === 2 && t.y > 120 && t.y < G.H * .74 && t.x > 40 && t.x < G.W - 50; });
+        var more = G.tips.filter(function (t) { return t.b.tier >= 2 && t.y > 120 && t.y < G.H * .74 && t.x > 40 && t.x < G.W - 50; });
         [60, 44, 0].forEach(function (gap) { more.forEach(function (t) {
           if (picked.length < apps.length && picked.indexOf(t) < 0 && picked.every(function (p) { return Math.hypot(p.x - t.x, p.y - t.y) > gap; })) picked.push(t); }); });
       }
@@ -86,7 +88,8 @@
       picked.sort(function (a, b) { return Math.hypot(a.x - 74, a.y - 500) - Math.hypot(b.x - 74, b.y - 500); });
       // a twig that carries an entry ends there: nothing grows on past the disc (Yan)
       var cut = new Set(); picked.forEach(function (t) { (function drop(b) { b.kids.forEach(function (k) { cut.add(k); drop(k); }); })(t.b); });
-      G.draw = G.P.filter(function (b) { return !cut.has(b); });
+      var carry = new Set(picked.map(function (t) { return t.b; }));
+      G.draw = G.P.filter(function (b) { return !cut.has(b) && (side === "sun" || b.tier < 3 || carry.has(b)); });
       G.leafs = G.leaves.filter(function (l) { return !cut.has(l.b) && picked.every(function (t) { return t.b !== l.b; }); });
       tags.innerHTML = ""; labels = picked.map(function (t, i) {
         var a = apps[i], b = document.createElement("button"); b.type = "button"; b.className = "tag";
@@ -150,11 +153,18 @@
           ctx.beginPath(); ctx.ellipse(cx, cy, 8 * S, 3.2 * S, a, 0, Math.PI * 2); ctx.stroke(); });
       });
       // entries ride their tips
+      picked.forEach(function (t) {
+        var b = t.b, n = b.pts.length - 1, e = at(b, b.pts[n], n, n, tt);
+        t.sx = e[0] + Math.cos(t.a) * 14 * S; t.sy = e[1] + Math.sin(t.a) * 14 * S;
+      });
       picked.forEach(function (t, i) {
-        var b = t.b, n = b.pts.length - 1, e = at(b, b.pts[n], n, n, tt), x = e[0] + Math.cos(t.a) * 14 * S, y = e[1] + Math.sin(t.a) * 14 * S;
-        labels[i].classList.toggle("l", x > W * .55);
-        labels[i].style.transform = "translate(" + x.toFixed(1) + "px," + y.toFixed(1) + "px)";
-        t.sx = x; t.sy = y;
+        // label to the outer side, unless another entry sits where the words would go
+        var left = t.sx > W * .55, blocked = function (l) { return picked.some(function (o) { return o !== t &&
+          Math.abs(o.sy - t.sy) < 44 && (l ? o.sx < t.sx && o.sx > t.sx - 140 : o.sx > t.sx && o.sx < t.sx + 140); }); };
+        if (blocked(left) && !blocked(!left)) left = !left;
+        if (t.left == null || t.left !== left && blocked(t.left)) t.left = left;   // don't flicker as the wind moves things
+        labels[i].classList.toggle("l", t.left);
+        labels[i].style.transform = "translate(" + t.sx.toFixed(1) + "px," + t.sy.toFixed(1) + "px)";
       });
       // glass squares breaking off the tip you tapped
       burst = burst.filter(function (q) { return q.life < q.max; });
