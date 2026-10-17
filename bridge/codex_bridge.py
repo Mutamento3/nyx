@@ -123,6 +123,18 @@ class Bridge:
         self.turn_done = asyncio.Event()
         self.last_activity = time.time()
         self.nudging = False
+        self.seen = 0
+
+    # ---- state: thread id + the last relay message we've handled ----
+    def state(self):
+        try:
+            return json.loads((DIR / "state.json").read_text())
+        except Exception:
+            return {}
+
+    def save_state(self, **kw):
+        st = self.state(); st.update(kw)
+        (DIR / "state.json").write_text(json.dumps(st))
 
     # ---- relay side ----
     async def out(self, body):
@@ -134,7 +146,10 @@ class Bridge:
     async def listen_relay(self):
         while True:
             try:
-                async with self.http.stream("GET", f"{RELAY}/channel/in", headers=AUTH, timeout=None) as r:
+                # resume after the last message we handled; on a first run, skip the old backlog
+                since = self.state().get("lastInId", 10 ** 12)
+                async with self.http.stream("GET", f"{RELAY}/channel/in", params={"since": since},
+                                            headers=AUTH, timeout=None) as r:
                     r.raise_for_status()
                     log("connected to relay")
                     async for line in r.aiter_lines():
@@ -143,6 +158,11 @@ class Bridge:
                                 m = json.loads(line[5:].strip())
                             except ValueError:
                                 continue
+                            mid = m.get("id")
+                            if isinstance(mid, int):
+                                if mid <= self.seen:
+                                    continue
+                                self.seen = mid
                             if m.get("content") or m.get("attachments"):
                                 await self.queue.put(m)
             except Exception as e:
@@ -165,14 +185,10 @@ class Bridge:
         acct = await self.codex.call("account/read", {})
         if not (acct or {}).get("account"):
             log("Codex isn't logged in. Run:  codex login --device-auth")
-        state = DIR / "state.json"
         persona = Path(PERSONA).read_text(encoding="utf-8") if PERSONA else None
         opts = {"cwd": str(CWD), "sandbox": SANDBOX, "approvalPolicy": "never",
                 "developerInstructions": persona, "model": MODEL}
-        try:
-            tid = json.loads(state.read_text()).get("threadId")
-        except Exception:
-            tid = None
+        tid = self.state().get("threadId")
         if tid:
             try:
                 await self.codex.call("thread/resume", {"threadId": tid, "excludeTurns": True, **opts})
@@ -180,10 +196,12 @@ class Bridge:
                 log("resumed thread", tid)
                 return
             except Exception as e:
+                if "active writer" in str(e):
+                    sys.exit("Another bridge is already using this thread — stop it first (one bridge per BRIDGE_DIR).")
                 log("resume failed, starting a new thread:", e)
         res = await self.codex.call("thread/start", opts)
         self.thread = res["thread"]["id"]
-        state.write_text(json.dumps({"threadId": self.thread}))
+        self.save_state(threadId=self.thread)
         log("new thread", self.thread)
 
     async def on_note(self, method, p):
@@ -267,6 +285,8 @@ class Bridge:
             else:
                 self.last_activity = time.time()
                 await self.handle(m)
+                if isinstance(m.get("id"), int):
+                    self.save_state(lastInId=m["id"])
 
     async def main(self):
         if not RELAY or not SECRET:

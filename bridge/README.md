@@ -50,7 +50,7 @@ python3 codex_bridge.py
 | `BRIDGE_NUDGE_MIN` | 空 | 安静多少分钟后给它一次主动开口的机会 |
 | `BRIDGE_DIR` | `~/.nyx-bridge` | 存对话串 id 和收到的图片 |
 
-想换一条新对话：删掉 `BRIDGE_DIR/state.json` 再重启。
+一个 `BRIDGE_DIR` 只能跑一座桥。桥记着对话串和处理到哪一条，重启以后接着上次那串、也不会把旧消息再答一遍。想换一条新对话：删掉 `BRIDGE_DIR/state.json` 再重启。
 
 ## 许可
 
