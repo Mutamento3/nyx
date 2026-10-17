@@ -253,3 +253,25 @@ button{ font:inherit; color:inherit; background:none; border:0; padding:0; curso
   box-shadow:inset 0 0 0 1px var(--hair); }
 .meter .models button.on{ background:var(--ink); color:var(--paper); box-shadow:none; }
 .meter .models p{ margin:10px 0 0; font-size:12px; font-style:italic; letter-spacing:0; min-height:1.2em; }
+
+/* ---------- NyxTree home ---------- */
+.tree{ position:relative; width:100%; height:100%; overflow:hidden; }
+.tree canvas{ position:absolute; left:0; top:0; }
+.tree.photo::before{ content:""; position:absolute; inset:0; background:var(--photo) center/cover no-repeat; filter:grayscale(1) brightness(.26) contrast(1.15); opacity:0; transition:opacity .6s; }
+:root[data-side="moon"] .tree.photo::before{ opacity:1; }
+.tree .tags{ position:absolute; inset:0; }
+.tree .tag{ position:absolute; left:0; top:0; width:0; height:0; padding:0; border:0; background:none; color:var(--ink); cursor:pointer; }
+.tree .tag i{ position:absolute; left:-11px; top:-11px; width:22px; height:22px; border-radius:50%;
+  background:rgba(255,255,255,.55); -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px);
+  box-shadow:inset 0 0 0 .6px rgba(31,26,22,.55), inset 0 1px 0 rgba(255,255,255,.9); transition:box-shadow .3s, background .3s; }
+.tree .tag i::after{ content:""; position:absolute; left:50%; top:50%; width:4.6px; height:4.6px; margin:-2.3px 0 0 -2.3px; border-radius:50%; background:#B8613A; }
+:root[data-side="moon"] .tree .tag i{ background:rgba(255,255,255,.08); box-shadow:inset 0 0 0 .6px rgba(217,207,194,.6), inset 0 1px 0 rgba(255,255,255,.18); }
+.tree .tag.hit i{ background:rgba(255,255,255,.85); box-shadow:inset 0 0 0 .6px rgba(31,26,22,.4), 0 0 0 7px rgba(255,255,255,.28); }
+.tree .tag span{ position:absolute; left:17px; top:-10px; white-space:nowrap; text-align:left; font:400 13px/1.15 var(--serif); opacity:.88; }
+.tree .tag.l span{ left:auto; right:17px; text-align:right; }
+.tree .tag small{ display:block; font-size:10.5px; letter-spacing:.08em; opacity:.7; margin-top:2px; }
+#drawer .homes{ display:flex; align-items:center; gap:6px; margin:22px 8px 0; padding-top:16px; border-top:1px solid var(--hair); font-size:12px; color:var(--soft); letter-spacing:.12em; }
+#drawer .homes span{ flex:1; }
+#drawer .homes button{ font:italic 400 15px/1 var(--serif); padding:8px 14px; border-radius:99px; box-shadow:inset 0 0 0 1px var(--hair); }
+#drawer .homes button.on{ background:var(--ink); color:var(--paper); box-shadow:none; }
+:root[data-home="tree"] #star, :root[data-home="tree"] #drops{ display:none; }   /* the tree stands on bare paper */

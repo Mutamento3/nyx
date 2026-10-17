@@ -6,6 +6,10 @@ window.NYX = {
   aiName: "Companion",
   meName: "Me",
   title: "Nyx",
+  // home: "ink" (the river poster) or "tree" (NyxTree). Each device can switch in the drawer; this is the default.
+  home: "ink",
+  // treePhoto: a picture laid under the tree on the night side, pressed dark, e.g. "photos/forest.jpg". Leave null for none.
+  treePhoto: null,
   // stickers: folder with <name>.png (or .gif) — [sticker:name] in a message shows it. Leave null for none.
   stickers: null,
   stickerList: [],   // names to offer in the sticker panel, e.g. ["hug", "nod"]

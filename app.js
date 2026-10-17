@@ -42,6 +42,21 @@
     document.addEventListener("touchend", function (e) { if (sx === null) return; var t = e.changedTouches[0], dx = t.clientX - sx, dy = t.clientY - sy; sx = null;
       if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy) * 1.4) return; if (dx > 0 && !H.hidden) openDrawer(); else closeDrawer(); }, { passive: true }); })();
 
+  /* two homes: NyxInk (the river poster) and NyxTree; the choice is kept per device */
+  function homeKind() { var k = null; try { k = localStorage.getItem("nyx_home"); } catch (e) {} return k === "tree" || k === "ink" ? k : (C.home === "tree" ? "tree" : "ink"); }
+  function makeHome() {
+    if (home && home.stop) home.stop();
+    var kind = homeKind();
+    document.documentElement.dataset.home = kind;
+    home = kind === "tree" && window.NyxTree ? NyxTree($("poster"), APPS, openApp, { photo: C.treePhoto })
+      : NyxHome($("poster"), APPS, openApp, C.tagline, { me: C.meName, drawer: openDrawer, ask: C.clawd && C.clawd.path ? askClawd : null });
+    document.querySelectorAll("#homes button").forEach(function (b) { b.classList.toggle("on", b.dataset.h === kind); });
+  }
+  document.querySelectorAll("#homes button").forEach(function (b) { b.onclick = function () {
+    try { localStorage.setItem("nyx_home", b.dataset.h); } catch (e) {}
+    closeDrawer(); makeHome(); if (!$("home").hidden) home.refresh();
+  }; });
+
   /* Clawd on the home poster talks to whatever your relay mounts at NYX.clawd.path (see README) */
   function askClawd(text, side, history) {
     return api(C.clawd.path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text: text, side: side, history: history }) })
@@ -334,7 +349,7 @@
       $("gate").hidden = true; $("aiName").textContent = AI;
       log.innerHTML = ""; byId.clear(); lastId = 0;
       (d.messages || []).forEach(put); openStream(); loadMeter();
-      if (!home) home = NyxHome($("poster"), APPS, openApp, C.tagline, { me: C.meName, drawer: openDrawer, ask: C.clawd && C.clawd.path ? askClawd : null });
+      if (!home) makeHome();
       show(location.hash === "#chat" ? "room" : "home");
     });
   }
