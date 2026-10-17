@@ -35,21 +35,22 @@
     }
     // the same seed grows the same bones by day and night; the day just goes one tier further
     // always grow all three tiers so the bones are identical; the night side just doesn't draw the last one
-    var tips = branch(74, H + 30, -Math.PI / 2 + .04, 470, 13, 0, 0, 3, null);
+    var tips = branch(74, H + 30, -Math.PI / 2 + .04, 470, 15, 0, 0, 3, null);
+    var top = Infinity; P.forEach(function (b) { b.pts.forEach(function (p) { if (p[1] < top) top = p[1]; }); });   // same frame day and night
     if (night) P = P.filter(function (b) { return b.tier < 3; });
     var leaves = [];
     if (!night) P.forEach(function (b) {   // (P is already trimmed at night)
       if (b.tier >= 2 && rnd() < .5) { var e = b.pts[b.pts.length - 1], q = b.pts[b.pts.length - 2], a = Math.atan2(e[1] - q[1], e[0] - q[0]);
         leaves.push({ b: b, a: a }); }
     });
-    // roots (Crys): a few hairs reaching down and left out of the bottom edge, below the trunk
-    var R = seeded(31), roots = [];
-    for (var r = 0; r < 5; r++) {
-      var pts = [[70 + R() * 14, H - 26 + R() * 10]], a = Math.PI / 2 + (r - 2) * .32 + .2, x = pts[0][0], y = pts[0][1];
-      for (var s = 0; s < 10; s++) { a += (R() - .5) * .3; x += Math.cos(a) * 9; y += Math.sin(a) * 9; pts.push([x, y]); }
-      roots.push({ pts: pts, w0: 3.4 - r * .35, w1: .5, z: (R() - .5) * .6, root: true });
-    }
-    return { P: P, tips: tips, leaves: leaves, roots: roots, W: W, H: H };
+    // roots (Crys): as heavy as the trunk, spreading left and right and out of the frame, so the weight sits low
+    var R = seeded(31), roots = [], spec = [[Math.PI * .92, 1.25], [Math.PI * .78, .95], [Math.PI * .6, .7], [Math.PI * .38, .9], [Math.PI * .14, 1.4], [Math.PI * .05, 1.1]];
+    spec.forEach(function (sp, r) {
+      var x = 72 + (R() - .5) * 8, y = H - 40 + R() * 6, a = sp[0], pts = [[x, y]], len = 260 * sp[1];
+      for (var s2 = 0; s2 < 16; s2++) { a += (R() - .5) * .22 + (Math.PI * .5 - a) * -.015; a = Math.max(.05, Math.min(Math.PI - .05, a)); x += Math.cos(a) * len / 16; y += Math.sin(a) * len / 16 * .8 + 1.2; pts.push([x, y]); }
+      roots.push({ pts: pts, w0: 11 - r * .8, w1: 1.2, z: (R() - .5) * .4, root: true });
+    });
+    return { P: P, tips: tips, leaves: leaves, roots: roots, W: W, H: H, top: top };
   }
 
   window.NyxTree = function (host, apps, open, opt) {
@@ -72,12 +73,16 @@
         var t = far[i]; if (picked.every(function (p) { return Math.hypot(p.x - t.x, p.y - t.y) > 80; })) picked.push(t);
       }
       if (picked.length < apps.length) {   // not enough room: loosen the spacing, then take first-tier tips too
-        var more = G.tips.filter(function (t) { return t.b.tier >= 1 && t.b.tier <= 2 && t.y > 120 && t.y < G.H * .74 && t.x > 40 && t.x < G.W - 50; });
+        var more = G.tips.filter(function (t) { return t.b.tier === 2 && t.y > 120 && t.y < G.H * .74 && t.x > 40 && t.x < G.W - 50; });
         [60, 44, 0].forEach(function (gap) { more.forEach(function (t) {
           if (picked.length < apps.length && picked.indexOf(t) < 0 && picked.every(function (p) { return Math.hypot(p.x - t.x, p.y - t.y) > gap; })) picked.push(t); }); });
       }
       // the most-used ones (first in NYX.apps) go to the tips nearest the trunk; the far-reaching tips to the rarely used
       picked.sort(function (a, b) { return Math.hypot(a.x - 74, a.y - 500) - Math.hypot(b.x - 74, b.y - 500); });
+      // a twig that carries an entry ends there: nothing grows on past the disc (Yan)
+      var cut = new Set(); picked.forEach(function (t) { (function drop(b) { b.kids.forEach(function (k) { cut.add(k); drop(k); }); })(t.b); });
+      G.draw = G.P.filter(function (b) { return !cut.has(b); });
+      G.leafs = G.leaves.filter(function (l) { return !cut.has(l.b) && picked.every(function (t) { return t.b !== l.b; }); });
       tags.innerHTML = ""; labels = picked.map(function (t, i) {
         var a = apps[i], b = document.createElement("button"); b.type = "button"; b.className = "tag";
         b.innerHTML = "<i></i><span>" + a.en + (a.zh ? "<small>" + a.zh + "</small>" : "") + "</span>";
@@ -88,19 +93,31 @@
       var r = (host.closest(".scroller") || host.parentElement).getBoundingClientRect(); dpr = Math.min(2, window.devicePixelRatio || 1);
       W = Math.max(280, r.width); H = Math.max(480, r.height);
       host.style.height = H + "px"; cv.width = W * dpr; cv.height = H * dpr; cv.style.width = W + "px"; cv.style.height = H + "px";
-      S = Math.min(W / G.W, H / G.H) * 1.04; OX = Math.min(0, (W - G.W * S) / 2) + 6; OY = H - G.H * S;   // anchor bottom-left
+      // fit: the highest tip stops a finger below the header; the tree's edge is drawn, not cut by the screen (Yan)
+      var head = 92, room = H - head - 8, span = G.H - G.top;
+      S = Math.min(W / G.W * 1.04, room / span); OX = 6; OY = H - G.H * S;
     }
     // a point on branch b, moved by tilt and wind according to its depth
     function at(b, p, k, n, tt) {
       var z = b.z, sway = still ? 0 : Math.sin(tt * (.5 + (z + 1) * .25) + b.pts[0][0] * .02) * (1.5 + (z + 1) * 2.2) * Math.pow(k / n, 1.6) * (b.root ? 0 : 1);
       return [OX + (p[0] + tilt[0] * z * 12 + sway) * S, OY + (p[1] + tilt[1] * z * 8) * S];
     }
-    function ink(op) { return side === "moon" ? "rgba(217,207,194," + op + ")" : "rgba(31,26,22," + op + ")"; }
+    // ink mixed into the paper colour, fully opaque: where branches overlap at a joint there is no darker seam
+    function ink(op) {
+      var a = side === "moon" ? [217, 207, 194] : [31, 26, 22], p = side === "moon" ? [12, 10, 9] : [236, 232, 225];
+      return "rgb(" + a.map(function (v, i) { return Math.round(p[i] + (v - p[i]) * Math.min(1, op)); }).join(",") + ")";
+    }
     function ribbon(b, tt) {
       var n = b.pts.length - 1, L = [], Rr = [];
+      if (b.parent || b.root) {   // tuck the start into the parent and round it off (Yan)
+        var s0 = at(b, b.pts[0], 0, n, tt), s1 = at(b, b.pts[1], 1, n, tt), dd = Math.hypot(s1[0] - s0[0], s1[1] - s0[1]) || 1, rr = b.w0 / 2 * S;
+        ctx.beginPath(); ctx.arc(s0[0] - (s1[0] - s0[0]) / dd * rr, s0[1] - (s1[1] - s0[1]) / dd * rr, rr, 0, Math.PI * 2);
+        ctx.fillStyle = ink(b.root ? .92 : .35 + .65 * (b.z + 1) / 2); ctx.fill();
+      }
       for (var i = 0; i <= n; i++) {
         var p = at(b, b.pts[i], i, n, tt), pp = at(b, b.pts[Math.max(0, i - 1)], Math.max(0, i - 1), n, tt), np = at(b, b.pts[Math.min(n, i + 1)], Math.min(n, i + 1), n, tt);
         var dx = np[0] - pp[0], dy = np[1] - pp[1], d = Math.hypot(dx, dy) || 1, w = (b.w0 + (b.w1 - b.w0) * i / n) / 2 * S;
+        if (i === 0 && b.parent) { p = [p[0] - dx / d * w * 2, p[1] - dy / d * w * 2]; }
         L.push([p[0] - dy / d * w, p[1] + dx / d * w]); Rr.push([p[0] + dy / d * w, p[1] - dx / d * w]);
       }
       ctx.beginPath(); ctx.moveTo(L[0][0], L[0][1]);
@@ -108,8 +125,10 @@
       for (k = Rr.length - 1; k >= 0; k--) ctx.lineTo(Rr[k][0], Rr[k][1]);
       ctx.closePath();
       var near = (b.z + 1) / 2;
+      var e = at(b, b.pts[n], n, n, tt);   // round the far end too: no flat cut where a limb hands over to its children
+      ctx.moveTo(e[0] + b.w1 / 2 * S, e[1]); ctx.arc(e[0], e[1], b.w1 / 2 * S, 0, Math.PI * 2);
       ctx.filter = b.z < -.3 ? "blur(.6px)" : "none";
-      ctx.fillStyle = ink((.35 + .65 * near) * (b.root ? .8 : 1)); ctx.fill();
+      ctx.fillStyle = ink(b.root ? .92 : .35 + .65 * near); ctx.fill();
     }
     function frame(now) {
       var tt = (now - t0) / 1000;
@@ -117,9 +136,9 @@
       tilt[0] += (tiltT[0] - tilt[0]) * .05; tilt[1] += (tiltT[1] - tilt[1]) * .05;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, W, H);
       G.roots.forEach(function (b) { ribbon(b, tt); });
-      G.P.slice().sort(function (a, b) { return a.z - b.z; }).forEach(function (b) { ribbon(b, tt); });
+      G.draw.slice().sort(function (a, b) { return a.z - b.z; }).forEach(function (b) { ribbon(b, tt); });
       ctx.filter = "none";
-      if (side === "sun") G.leaves.forEach(function (l) {   // line-drawn leaves at the day tips
+      if (side === "sun") G.leafs.forEach(function (l) {   // line-drawn leaves at the day tips
         var b = l.b, n = b.pts.length - 1, e = at(b, b.pts[n], n, n, tt), op = (.35 + .65 * (b.z + 1) / 2) * .7;
         ctx.strokeStyle = ink(op); ctx.lineWidth = .8;
         [-.9, .9].forEach(function (o) { var a = l.a + o, cx = e[0] + Math.cos(a) * 9 * S, cy = e[1] + Math.sin(a) * 9 * S;
