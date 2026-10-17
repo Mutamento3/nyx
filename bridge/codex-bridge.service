@@ -1,0 +1,18 @@
+# Keeps the Codex bridge running. Copy to /etc/systemd/system/, replace YOU and the paths, then:
+#   sudo systemctl daemon-reload && sudo systemctl enable --now codex-bridge
+[Unit]
+Description=Nyx Codex bridge
+After=network-online.target companion-relay.service
+
+[Service]
+User=YOU
+Environment=RELAY_URL=http://127.0.0.1:3011
+EnvironmentFile=/home/YOU/nyx/relay/relay.env
+Environment=BRIDGE_CWD=/home/YOU/companion
+Environment=PATH=/usr/local/bin:/usr/bin:/bin
+ExecStart=/home/YOU/nyx/relay/venv/bin/python /home/YOU/nyx/bridge/codex_bridge.py
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

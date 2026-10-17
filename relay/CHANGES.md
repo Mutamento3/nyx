@@ -21,3 +21,7 @@ Nyx 其他房间要的接口，每个都可以不装，没装的那个只回 503
 ## `channel/`
 
 `server.ts` 原样未改。新增 `start-channel.sh` 和 `claude-companion.service`：让 Claude Code 在服务器上的 tmux 里常驻、开机自启，并自动点掉新版 Claude Code 加载开发中 channel 时弹的确认。原版假设 AI 跑在你自己电脑上。
+
+## `bridge/`（新增）
+
+`codex_bridge.py`：用 Codex 官方 app-server 把 ChatGPT 订阅接成后台的「AI 那一头」。一条常驻对话串、回话流式、可选主动开口。原版只有 Claude Code 插件和付费 API 两条路，这是第三条。
