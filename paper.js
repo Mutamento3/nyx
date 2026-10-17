@@ -1,4 +1,4 @@
-/* Nychthemeron — the paper every page sits on: grain, the marks along the thread, a scatter of ink drops.
+/* Nyx — the paper every page sits on: grain, the marks along the thread, a scatter of ink drops.
    Needs <div id="paper">, <svg id="drops"> in the page. NyxPaper.paint() after the side changes. */
 (function () {
   "use strict";

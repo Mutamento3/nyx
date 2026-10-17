@@ -1,4 +1,4 @@
-/* Nychthemeron — opening card. A word list per side; the first letters drop in vertically and each one pulls its
+/* Nyx — opening card. A word list per side; the first letters drop in vertically and each one pulls its
    word out to the right. When the side flips, every word turns over on its row into the other side's word.
    Tap to skip. NyxSplash(fromSide, toSide) */
 (function () {

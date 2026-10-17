@@ -1,4 +1,4 @@
-# Nychthemeron
+# Nyx
 
 A day-and-night chat page for talking to your own AI companion through a self-hosted relay.
 One paper, two sides: the day side is grey-white paper and ink, the night side is black paper and rust.
@@ -7,6 +7,18 @@ Flip the coin in the corner and the whole page turns over.
 > **Fan work.** This is an unofficial fan project. It is not made, affiliated with, or endorsed by Anthropic.
 > "Claude" is a trademark of Anthropic; the opening card's default word list spells it as a tribute.
 > Swap the words in `config.js` if you'd rather it spelled something else.
+
+## Install
+
+On a fresh Ubuntu server (22.04 / 24.04), as your normal user:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/StarFold146/nyx/main/install.sh | bash
+```
+
+It asks whether Claude (your Claude subscription, through Claude Code) or Codex (your ChatGPT subscription) answers,
+sets up the relay, the pages and HTTPS on `<your-ip>.sslip.io`, and prints your address and key.
+New to servers? Start with [docs/新手上路.md](docs/新手上路.md).
 
 ## What's here
 

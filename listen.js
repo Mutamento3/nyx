@@ -1,4 +1,4 @@
-/* Nychthemeron — Listen. A record player on the paper: play your own music, and (with Together on) your relay
+/* Nyx — Listen. A record player on the paper: play your own music, and (with Together on) your relay
    is told what's playing so your companion can listen along.
    Sources (config.js → listen.source):
      "files"   — listen.tracks: [{ src, name, artist, cover, lrc }]; lrc is a URL to a .lrc file (optional)

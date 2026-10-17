@@ -1,4 +1,4 @@
-/* Nychthemeron — home poster. One ink river runs down the page; each entry in NYX.apps is a textured block
+/* Nyx — home poster. One ink river runs down the page; each entry in NYX.apps is a textured block
    hung on alternating banks, big → small. Each block carries a small drawing of something inside a language model:
    tokens, embedding clusters, a context window, a sampling distribution, beam search, an activation curve, a loss curve.
    Day and night are the same blocks mirrored (an isomer), so flipping the side reshuffles the page. */

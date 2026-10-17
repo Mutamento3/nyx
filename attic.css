@@ -1,4 +1,4 @@
-/* Nychthemeron — Attic. Shelves as small coloured chips, pictures in two loose columns on the paper. */
+/* Nyx — Attic. Shelves as small coloured chips, pictures in two loose columns on the paper. */
 body.attic{ overflow:hidden; }
 .ap{ position:fixed; inset:0; z-index:1; overflow-y:auto; -webkit-overflow-scrolling:touch; padding:calc(env(safe-area-inset-top) + 8px) var(--pad) calc(env(safe-area-inset-bottom) + 120px); }
 .ap::-webkit-scrollbar{ display:none; }

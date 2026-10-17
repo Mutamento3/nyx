@@ -1,4 +1,4 @@
-/* Nychthemeron — Room. An empty room to furnish: four walls, a window on the far wall, a lamp, a floor.
+/* Nyx — Room. An empty room to furnish: four walls, a window on the far wall, a lamp, a floor.
    You stand in the doorway; drag to look around, pinch (or scroll) to lean in, tap a thing to see its name.
    Day side: low gold sun slanting in through the window. Night side: dark sky, the lamp on.
    Furniture comes from config.js → room.items as .glb files (see docs/room-blender.md). Units are metres. */

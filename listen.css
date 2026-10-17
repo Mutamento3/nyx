@@ -1,4 +1,4 @@
-/* Nychthemeron — Listen. Same paper as the chat; a record, a thread, a glass card. */
+/* Nyx — Listen. Same paper as the chat; a record, a thread, a glass card. */
 :root{ --rec:#171413; --arm-hi:#E9E4DE; --arm-lo:#A69D95; --thread:rgba(164,73,42,.75); --glass:rgba(247,242,232,.78); --glass-line:rgba(255,255,255,.75); --np-veil:rgba(236,232,225,.74); --bird:#221E1C; --bird2:#A4492A; --glow:#E8B9A2; --spark:#FFFFFF; }
 :root[data-side="moon"]{ --rec:#050404; --arm-hi:#8C7B72; --arm-lo:#3B312C; --thread:rgba(201,96,58,.7); --glass:rgba(30,23,20,.78); --glass-line:rgba(235,198,178,.14); --np-veil:rgba(12,10,9,.78); --bird:#E8C9B8; --bird2:#C9603A; --glow:#8A2E18; --spark:#F4D3C2; }
 body.listen{ overflow:hidden; }

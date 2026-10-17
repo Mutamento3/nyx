@@ -1,4 +1,4 @@
-/* Nychthemeron — the chat page. Talks to a companion relay:
+/* Nyx — the chat page. Talks to a companion relay:
    GET  {relay}/app/history?since=&limit=   → { messages:[{id, ts, from:"human"|"ai", kind, text, meta}] }
    GET  {relay}/app/stream                   → server-sent events, one JSON per "data:" line
    POST {relay}/app/send  {text, side, quote} → { id }
@@ -33,7 +33,7 @@
   function openDrawer() { $("drawer").classList.add("open"); $("drawer").setAttribute("aria-hidden", "false"); }
   function closeDrawer() { $("drawer").classList.remove("open"); $("drawer").setAttribute("aria-hidden", "true"); }
   $("menu").onclick = openDrawer; $("drawer").querySelector(".sh").onclick = closeDrawer;
-  $("drawerTitle").textContent = C.title || "Nychthemeron"; $("homeTitle").textContent = (C.title || "Nychthemeron").toUpperCase();
+  $("drawerTitle").textContent = C.title || "Nyx"; $("homeTitle").textContent = (C.title || "Nyx").toUpperCase();
   $("drawerList").innerHTML = APPS.map(function (a, i) { return '<button type="button" data-i="' + i + '">' + esc(a.en) + (a.zh ? "<small>" + esc(a.zh) + "</small>" : "") + "</button>"; }).join("");
   $("drawerList").querySelectorAll("button").forEach(function (b) { b.onclick = function () { openApp(APPS[+b.dataset.i]); }; });
   // swipe right opens the drawer, left closes it (home only)
@@ -343,7 +343,7 @@
     try { localStorage.removeItem("nyx_key"); } catch (e) {}
     $("room").hidden = true; $("home").hidden = true; $("gate").hidden = false;
   }
-  $("gateTitle").textContent = C.title || "Nychthemeron";
+  $("gateTitle").textContent = C.title || "Nyx";
   $("gateForm").onsubmit = function (e) {
     e.preventDefault(); var k = $("gateKey").value.trim(); if (!k) return;
     $("gateErr").textContent = "";

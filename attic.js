@@ -1,4 +1,4 @@
-/* Nychthemeron — Attic. Bring up a pile of pictures at once, make your own shelves, put things on them.
+/* Nyx — Attic. Bring up a pile of pictures at once, make your own shelves, put things on them.
    Your companion can look through the same pile on the relay side.
    GET  {relay}/app/attic                         → { cats:[{id, name}], items:[{file, cat, note, picks?}] }
    POST {relay}/app/attic/cat   {op:"add", name} | {op:"rename", id, name} | {op:"del", id}
