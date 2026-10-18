@@ -120,3 +120,4 @@ Give him whatever persona you like in `CLAWD`. If the call fails, the bubble say
 ## License
 
 The web pages: MIT, see [LICENSE](LICENSE). `relay/` and `channel/`: GNU AGPL v3, a modified version of Tidal Echo — see `relay/NOTICE`.
+`assets/waternormals.jpg` is from the three.js examples (MIT, © three.js authors); three.js itself is loaded from jsDelivr.
