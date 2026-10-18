@@ -70,6 +70,12 @@
       <div class="rings" id="mRings"></div>
       <div class="ctx" id="mCtx"><span>context</span><i><b></b></i><em></em></div>
       <div class="models"><span>model</span><div id="mList"></div><p id="mNote"></p></div>
+      <div class="win" id="mWin" hidden>
+        <div class="ln"><span>line</span><input type="range" id="mLine" min="0" max="900" step="20" value="0" aria-label="Context line"><em id="mLineV">none</em></div>
+        <p class="hint">Past the line, it saves to memory first, then compacts once it's quiet. All the way left: no line.</p>
+        <div class="acts"><button type="button" id="mCompact">Compact now</button><button type="button" id="mNew">New window</button><button type="button" id="mWins">Windows</button></div>
+        <p class="hint" id="mWinNote"></p>
+      </div>
     </div>
   </div>
 

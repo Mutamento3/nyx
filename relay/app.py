@@ -642,7 +642,11 @@ def check_auth(request: Request) -> None:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()
+    # [Nyx] background jobs the extras register (the context-line watcher)
+    tasks = [asyncio.create_task(f()) for f in globals().get("NYX_STARTUP", [])]
     yield
+    for t in tasks:
+        t.cancel()
 
 
 app = FastAPI(lifespan=lifespan)

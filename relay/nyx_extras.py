@@ -8,6 +8,9 @@
   Model   GET  /app/model · POST /app/model   which model the companion should use
   Board   GET  /app/board · POST /app/board · POST /app/board/<id>   the engineering board (relay/board.py for the AI)
   Heart   GET  /app/heart · GET /app/heart/file?path=   read-only: the persona, the memory folder, the relay code
+  Window  GET  /app/window · POST /app/window/{line,compact,new,switch} · GET /app/window/list
+          the context line (past it: save memory, then compact), compact now, a new window, go back to an old one.
+          Claude Code: done here through tmux. Codex: the bridge picks the command up (GET/POST /app/window/cmd).
 
 Everything is optional: a room whose pieces aren't installed just answers 503.
 Mounted from app.py with `nyx_extras.register(app, globals())`.
@@ -20,9 +23,11 @@ import json
 import os
 import re
 import secrets
+import shlex
+import sqlite3
 import subprocess
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from fastapi import HTTPException, Request
@@ -58,6 +63,13 @@ USAGE_FILE = Path(os.environ.get("RELAY_USAGE_FILE", str(Path.home() / ".claude"
 COMPANION_DIR = Path(os.environ.get("RELAY_COMPANION_DIR", str(Path.home() / "companion")))
 NYX_DIR = Path(__file__).resolve().parent.parent
 HEART_REDACT = re.compile(r"((?:sk|ghp|gho|xox[bp]|AIza)[-_A-Za-z0-9]{12,})|((?:SECRET|TOKEN|PASSWORD|API_KEY)\s*=\s*)(\S+)")
+
+# --- Window: the Claude Code session in tmux, and how to start it again (the systemd unit's ExecStart) ---
+TMUX = os.environ.get("RELAY_TMUX_SESSION", "companion")
+COMPANION_UNIT = Path(os.environ.get("RELAY_COMPANION_UNIT", "/etc/systemd/system/nyx-companion.service"))
+CLAUDE_PROJECT = Path.home() / ".claude" / "projects" / re.sub(r"[^A-Za-z0-9]", "-", str(COMPANION_DIR))
+QUIET_SEC = 45          # after the memory note, compact once the AI has answered and been quiet this long
+PROMPT_MARKS = ("Esc to cancel", "Enter to confirm", "Do you want", "\u276f 1.")   # a box is waiting: typing would answer it
 
 CLAUDE_MODELS = os.environ.get("RELAY_MODEL_OPTIONS",
                                "claude-opus-5-5:Opus 5.5,claude-sonnet-5-5:Sonnet 5.5,claude-haiku-5-5:Haiku 5.5")
@@ -452,3 +464,241 @@ def register(app, g):
         real = (COMPANION_DIR / path[len("companion/"):]) if path.startswith("companion/") else (NYX_DIR / path[len("nyx/"):])
         text = real.read_text(encoding="utf-8", errors="replace")
         return {"path": path, "text": HEART_REDACT.sub(lambda m: (m.group(2) + "***") if m.group(2) else "***", text)}
+
+    # ---- Window: the context line, compact, a new window, old windows ----
+    line_file, cmd_file = data_dir / "context_line.json", data_dir / "window_cmd.json"
+    ctx = {"nudged_sid": "", "nudged_at": None}
+    SID_RE = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
+    win_cache = {}
+
+    def line_k():
+        try:
+            return int(json.loads(line_file.read_text())["line_k"])
+        except Exception:
+            return 0
+
+    def backend():
+        m = current_meter() or {}
+        return "codex" if m.get("backend") == "codex" else "claude"
+
+    def last_reply_at():
+        try:
+            with g["db"]() as conn:
+                r = conn.execute("SELECT ts FROM messages WHERE direction='out' AND kind='reply' ORDER BY id DESC LIMIT 1").fetchone()
+            return datetime.fromisoformat(r[0].replace("Z", "+00:00")) if r else None
+        except Exception:
+            return None
+
+    def tmux(*a, timeout=10):
+        return subprocess.run(["tmux", *a], capture_output=True, text=True, timeout=timeout)
+
+    def session_meta():
+        """sessions/<pid>.json of the Claude Code process running in our tmux session."""
+        for meta in (Path.home() / ".claude" / "sessions").glob("*.json"):
+            try:
+                d = json.loads(meta.read_text())
+            except Exception:
+                continue
+            if str(d.get("tmux", "")).split(":")[0] == TMUX and d.get("sessionId"):
+                return d
+        return {}
+
+    def claude_usage():
+        m = session_meta()
+        if not m:
+            return {}
+        f = CLAUDE_PROJECT / f"{m['sessionId']}.jsonl"
+        out = {"sid": m["sessionId"], "started_at": m.get("startedAt"), "used": 0}
+        try:
+            with f.open("rb") as fh:
+                fh.seek(max(0, f.stat().st_size - 600_000))
+                lines = fh.read().decode("utf-8", "ignore").splitlines()
+        except Exception:
+            return out
+        for line in reversed(lines):
+            try:
+                if '"compact_boundary"' in line:
+                    out["used"] = int(json.loads(line)["compactMetadata"]["postTokens"]); break
+                if '"usage"' in line:
+                    u = json.loads(line)["message"]["usage"]
+                    out["used"] = int(u.get("input_tokens", 0)) + int(u.get("cache_read_input_tokens", 0)) + int(u.get("cache_creation_input_tokens", 0)); break
+            except Exception:
+                continue
+        return out
+
+    def usage_now():
+        if backend() == "codex":
+            c = (current_meter() or {}).get("context") or {}
+            return {"sid": (current_meter() or {}).get("thread"), "used": c.get("used") or 0}
+        return claude_usage()
+
+    async def claude_compact():
+        pane = await asyncio.to_thread(tmux, "capture-pane", "-pt", TMUX)
+        if pane.returncode != 0:
+            raise HTTPException(status_code=503, detail="the window isn't running")
+        if any(s in "\n".join(pane.stdout.rstrip().splitlines()[-15:]) for s in PROMPT_MARKS):
+            raise HTTPException(status_code=409, detail="the window is waiting on a question; answer it in the terminal first")
+        await asyncio.to_thread(tmux, "send-keys", "-t", TMUX, "C-u", "/compact", "Enter")
+
+    async def claude_restart(resume=""):
+        try:
+            line = next(l for l in COMPANION_UNIT.read_text().splitlines() if l.startswith("ExecStart="))
+            cmd = shlex.split(line[len("ExecStart="):])
+        except Exception:
+            raise HTTPException(status_code=503, detail="don't know how to start the window (" + str(COMPANION_UNIT) + ")")
+        await asyncio.to_thread(tmux, "kill-session", "-t", TMUX)
+        ctx.update(nudged_sid="", nudged_at=None)
+        await asyncio.sleep(1)
+        env = dict(os.environ, NYX_RESUME=resume) if resume else dict(os.environ)
+        proc = await asyncio.to_thread(subprocess.run, cmd, capture_output=True, text=True, timeout=120, env=env)
+        if proc.returncode != 0:
+            raise HTTPException(status_code=500, detail="the window didn't start: " + (proc.stdout + proc.stderr)[-200:])
+
+    def claude_windows():
+        tag = '<channel source=\\"companion\\"'
+        msg_re = re.compile(re.escape(tag) + r'[^>]*user=\\"human\\"[^>]*>\\n(.*?)\\n</channel>')
+        cur, out, cutoff = session_meta().get("sessionId", ""), [], time.time() - 30 * 86400
+        for f in CLAUDE_PROJECT.glob("*.jsonl"):
+            if not SID_RE.match(f.stem):
+                continue
+            try:
+                mt = f.stat().st_mtime
+            except OSError:
+                continue
+            if mt < cutoff:
+                continue
+            hit = win_cache.get(f.stem)
+            if not hit or hit[0] != mt:
+                first, last, n, used = None, "", 0, 0
+                try:
+                    with f.open("r", encoding="utf-8", errors="ignore") as fh:
+                        for line in fh:
+                            if first is None and '"timestamp"' in line:
+                                m = re.search(r'"timestamp":"([^"]+)"', line); first = m and m.group(1)
+                            if tag in line and '"type":"user"' in line:
+                                for m in msg_re.finditer(line):
+                                    n += 1; last = m.group(1)
+                            if '"usage"' in line and '"assistant"' in line:
+                                try:
+                                    u = json.loads(line)["message"]["usage"]
+                                    used = int(u.get("input_tokens", 0)) + int(u.get("cache_read_input_tokens", 0)) + int(u.get("cache_creation_input_tokens", 0))
+                                except Exception:
+                                    pass
+                except Exception:
+                    continue
+                try:
+                    last = json.loads('"' + last + '"')
+                except Exception:
+                    pass
+                info = {"sid": f.stem, "started": first, "last": datetime.fromtimestamp(mt, timezone.utc).isoformat(),
+                        "messages": n, "usage_tokens": used, "last_text": last[:60]} if n else None
+                win_cache[f.stem] = hit = (mt, info)
+            if hit[1]:
+                out.append({**hit[1], "current": f.stem == cur})
+        if cur and not any(w["current"] for w in out):
+            out.append({"sid": cur, "started": None, "last": None, "messages": 0, "usage_tokens": 0, "last_text": "", "current": True})
+        out.sort(key=lambda w: w["last"] or "9", reverse=True)
+        return out[:20]
+
+    def queue_cmd(action, **kw):   # for the Codex bridge
+        cmd_file.write_text(json.dumps({"action": action, "ts": time.time(), **kw}))
+
+    @app.get("/app/window")
+    async def window_get(request: Request):
+        check_auth(request)
+        u = await asyncio.to_thread(usage_now)
+        m = current_meter() or {}
+        return {"backend": backend(), "line_k": line_k(), "used": u.get("used") or 0, "sid": u.get("sid"),
+                "started_at": u.get("started_at"), "size": ((m.get("context") or {}).get("size")), "nudged": bool(ctx["nudged_at"])}
+
+    @app.post("/app/window/line")
+    async def window_line(request: Request):
+        check_auth(request)
+        try:
+            k = max(0, min(2000, int((await request.json()).get("line_k") or 0)))
+        except (TypeError, ValueError):
+            raise HTTPException(status_code=400, detail="line_k must be a number")
+        line_file.write_text(json.dumps({"line_k": k}))
+        return {"ok": True, "line_k": k}
+
+    @app.post("/app/window/compact")
+    async def window_compact(request: Request):
+        check_auth(request)
+        if backend() == "codex":
+            queue_cmd("compact")
+        else:
+            await claude_compact()
+        return {"ok": True}
+
+    @app.post("/app/window/new")
+    async def window_new(request: Request):
+        check_auth(request)
+        if backend() == "codex":
+            queue_cmd("new")
+        else:
+            await claude_restart()
+        return {"ok": True}
+
+    @app.get("/app/window/list")
+    async def window_list(request: Request):
+        check_auth(request)
+        if backend() == "codex":
+            return {"windows": (current_meter() or {}).get("windows") or []}
+        return {"windows": await asyncio.to_thread(claude_windows)}
+
+    @app.post("/app/window/switch")
+    async def window_switch(request: Request):
+        check_auth(request)
+        sid = str((await request.json()).get("sid") or "")
+        if backend() == "codex":
+            if not any(w.get("sid") == sid for w in (current_meter() or {}).get("windows") or []):
+                raise HTTPException(status_code=404, detail="no such window")
+            queue_cmd("switch", sid=sid)
+            return {"ok": True}
+        if not SID_RE.match(sid) or not (CLAUDE_PROJECT / f"{sid}.jsonl").exists():
+            raise HTTPException(status_code=404, detail="no such window")
+        await claude_restart(sid)
+        return {"ok": True}
+
+    @app.get("/app/window/cmd")
+    async def window_cmd_get(request: Request):
+        """The Codex bridge asks for a waiting command (compact / new / switch) and clears it."""
+        check_auth(request)
+        try:
+            c = json.loads(cmd_file.read_text()); cmd_file.unlink()
+        except Exception:
+            return {}
+        return c if time.time() - c.get("ts", 0) < 600 else {}
+
+    async def line_watch():
+        """Past the line: one note asking the AI to save what it wants to keep; once it has answered and gone quiet, compact."""
+        while True:
+            await asyncio.sleep(60)
+            try:
+                line = line_k() * 1000
+                if not line:
+                    continue
+                u = await asyncio.to_thread(usage_now)
+                used, sid, now = u.get("used") or 0, u.get("sid") or "", datetime.now(timezone.utc)
+                if used < line:
+                    ctx.update(nudged_sid="", nudged_at=None)
+                    continue
+                if ctx["nudged_sid"] != sid or ctx["nudged_at"] is None:
+                    ctx.update(nudged_sid=sid, nudged_at=now)
+                    await broadcast(plugin_subs, {"content": (
+                        f"(An automatic note from the app, not typed by {human}.) The context is at {used // 1000}k, past the "
+                        f"{line // 1000}k line {human} set. Save what you want to keep to your memory now (memory/ in your "
+                        f"folder), then tell {human} in a sentence. Once you've gone quiet, the app compacts this window."),
+                        "user": "app", "ts": now_iso(), "attachments": []})
+                    continue
+                last = last_reply_at()
+                if last and last > ctx["nudged_at"] and (now - last).total_seconds() >= QUIET_SEC:
+                    if backend() == "codex":
+                        queue_cmd("compact")
+                    else:
+                        await claude_compact()
+                    ctx["nudged_at"] = now + timedelta(minutes=10)   # give it time to shrink
+            except Exception:
+                pass
+
+    g.setdefault("NYX_STARTUP", []).append(line_watch)

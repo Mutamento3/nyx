@@ -117,6 +117,30 @@
       F.open();
     }
 
-    return { board: board, heart: heart, folder: folder };
+    /* ---------- old windows: every conversation with the companion here; tap one to go back to it ---------- */
+    var Wn = null;
+    function when(iso) { if (!iso) return ""; var d = new Date(iso), n = new Date(), hm = String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0");
+      return (d.toDateString() === n.toDateString() ? "today " : (d.getMonth() + 1) + "/" + d.getDate() + " ") + hm; }
+    function windows(after) {
+      if (!Wn) Wn = sheet('Windows <small>窗口</small>');
+      Wn.body.innerHTML = '<p class="none">Looking…</p>'; Wn.open();
+      api("/app/window/list").then(function (d) {
+        var ws = d.windows || [];
+        Wn.body.innerHTML = ws.length ? ws.map(function (w, i) {
+          return '<button type="button" class="file win' + (w.current ? " cur" : "") + '" data-i="' + i + '"><span class="wt">' + (w.current ? "<b>in use</b> · " : "") + "opened " + esc(when(w.started) || "–")
+            + (w.messages != null ? " · " + w.messages + " messages" : "") + "</span><span>" + (w.usage_tokens ? Math.round(w.usage_tokens / 1000) + "k · " : "") + "last " + esc(when(w.last) || "just now") + "</span>"
+            + '<span class="wx">' + esc((w.last_text || "(nothing said yet)").replace(/\s+/g, " ")) + "</span></button>";
+        }).join("") : '<p class="none">No windows yet.</p>';
+        Wn.body.onclick = function (e) {
+          var b = e.target.closest("[data-i]"); if (!b) return; var w = ws[+b.dataset.i]; if (w.current) return;
+          if (!confirm("Go back to the window opened " + when(w.started) + "? The one in use closes; you can come back to it here too.")) return;
+          Wn.body.innerHTML = '<p class="none">Switching…</p>';
+          api("/app/window/switch", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sid: w.sid }) })
+            .then(function () { Wn.close(); if (after) setTimeout(after, 2500); }).catch(function (e) { Wn.body.innerHTML = '<p class="none">Didn\u2019t switch: ' + esc(e.message) + "</p>"; });
+        };
+      }).catch(function () { Wn.body.innerHTML = '<p class="none">Couldn\u2019t get the list.</p>'; });
+    }
+
+    return { board: board, heart: heart, folder: folder, windows: windows };
   };
 })();

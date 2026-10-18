@@ -315,11 +315,38 @@
     $("mNote").textContent = m.model_applies === "next" ? "A new pick applies from the next message." :
       m.model_applies === "restart" ? "A new pick applies the next time the session starts." : "";
   }
+  /* the window: context line, compact, new window, old windows (GET /app/window …) */
+  var win = null;
+  function kfmt(n) { return n >= 1000 ? Math.round(n / 1000) + "k" : String(n || 0); }
+  function paintWin() {
+    var w = win; $("mWin").hidden = !w; if (!w) return;
+    if (document.activeElement !== $("mLine")) $("mLine").value = w.line_k || 0;
+    var k = +$("mLine").value; $("mLineV").textContent = k ? k + "k" : "none";
+    var ctx = $("mCtx"); ctx.hidden = false;
+    var size = w.size || (meterData && meterData.context && meterData.context.size) || 1000000;
+    if (!(meterData && meterData.context && meterData.context.used_pct != null)) { ctx.querySelector("b").style.width = Math.min(100, 100 * (w.used || 0) / size) + "%"; }
+    ctx.querySelector("em").textContent = kfmt(w.used) + (w.line_k ? " / " + w.line_k + "k" : "");
+    var s0 = w.started_at, sec = typeof s0 === "number" ? (s0 > 1e12 ? s0 / 1000 : s0) : s0 ? Date.parse(s0) / 1000 : 0;   // ms, s or ISO
+    $("mWinNote").textContent = sec ? "This window opened " + whenReset(sec) + "." : "";
+  }
+  function loadWin() { return api("/app/window").then(function (d) { win = d; paintWin(); }).catch(function () { win = null; paintWin(); }); }
+  var lineT = 0;
+  $("mLine").addEventListener("input", function () { var k = +this.value; $("mLineV").textContent = k ? k + "k" : "none";
+    clearTimeout(lineT); lineT = setTimeout(function () { api("/app/window/line", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ line_k: k }) }).then(loadWin).catch(function () {}); }, 500); });
+  function winAct(path, ask, done) {
+    if (ask && !confirm(ask)) return;
+    $("mWinNote").textContent = "…";
+    api(path, { method: "POST" }).then(function () { $("mWinNote").textContent = done; setTimeout(function () { loadWin(); loadMeter(); }, 2500); })
+      .catch(function (e) { $("mWinNote").textContent = /409/.test(e.message) ? "It's waiting on a question in the terminal — answer that first." : "Didn't work: " + e.message; });
+  }
+  $("mCompact").onclick = function () { winAct("/app/window/compact", "", "Compacting — give it a minute."); };
+  $("mNew").onclick = function () { winAct("/app/window/new", "Open a new window for " + AI + "? This one closes; what isn't in memory doesn't come along. You can come back to it from Windows.", "New window open."); };
+  $("mWins").onclick = function () { if (hold) hold.windows(function () { loadWin(); loadMeter(); }); };
   function loadMeter() {
     if (!key) return Promise.resolve();
-    return api("/app/meter").then(function (d) { meterData = d; paintOrb(); if (!$("meter").hidden) paintMeter(); }).catch(function () { meterData = null; paintOrb(); });
+    return api("/app/meter").then(function (d) { meterData = d; paintOrb(); if (!$("meter").hidden) { paintMeter(); paintWin(); } }).catch(function () { meterData = null; paintOrb(); });
   }
-  function openMeter() { paintMeter(); $("meter").hidden = false; loadMeter(); }
+  function openMeter() { paintMeter(); paintWin(); $("meter").hidden = false; loadMeter(); loadWin(); }
   function closeMeter() { $("meter").hidden = true; }
   $("meter").addEventListener("click", function (e) { if (e.target === $("meter")) closeMeter(); });
   $("mList").addEventListener("click", function (e) {

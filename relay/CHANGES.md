@@ -3,11 +3,12 @@
 底子是 [Tidal Echo](https://github.com/anhe2021212-spec/Tidal_Echo)（作者 anhe2021212-spec，commit `860e5de`）。原作者已经停更，这里接着维护，改动都写在这儿。
 Based on Tidal Echo by anhe2021212-spec (commit `860e5de`). The original is no longer maintained; changes are listed here.
 
-## `relay/app.py`（只动了三处，都标了 `[Nyx]`）
+## `relay/app.py`（只动了四处，都标了 `[Nyx]`）
 
 1. `/app/send` 收下 Nyx 聊天页发来的 `quote`（引用的气泡）和 `side`（`sun` 白天 / `moon` 夜里），存进消息的 `meta`。
 2. 推给 AI 的那条消息里，引用写成一行「（引用谁：「…」）」放在前面；夜里发的消息开头加 `RELAY_NIGHT_MARK`（默认 `【夜面】`），AI 就知道现在是哪一面。
 3. 文件末尾挂上 `nyx_extras.py`。
+4. 启动时把 `nyx_extras.py` 登记的后台任务（压缩线巡查）跑起来。
 
 ## `relay/nyx_extras.py`（新文件）
 
@@ -17,10 +18,14 @@ Nyx 其他房间要的接口，每个都可以不装，没装的那个只回 503
 - 一起听 Listen：`POST /app/music/<action>`、`GET|POST /app/music/now`，接本机的网易云小桥（见 `docs/listen-netease.md`）
 - 小螃蟹 Clawd：`POST /app/clawd`，设了 `ANTHROPIC_API_KEY` 才开
 - 额度 Usage：`GET /app/usage`，读 Claude Code 状态栏存下来的五小时 / 一周用量
+- 仪表 Meter / Model：`GET|POST /app/meter`、`GET|POST /app/model`，悬浮球里的模型、额度、上下文
+- 工程板 Board：`GET|POST /app/board`、`POST /app/board/<id>`，AI 用 `relay/board.py`
+- 心脏 Heart：`GET /app/heart`、`GET /app/heart/file`，只读人设、记忆文件夹、后台代码，钥匙打码
+- 窗口 Window：`GET /app/window`、`POST /app/window/{line,compact,new,switch}`、`GET /app/window/list`；压缩线（过线先让 AI 写记忆，安静下来自动压缩）、压缩一下、开新窗口、回到旧窗口。Claude Code 走 tmux，Codex 由 bridge 来取命令（`GET /app/window/cmd`）
 
 ## `channel/`
 
-`server.ts` 原样未改。新增 `start-channel.sh` 和 `claude-companion.service`：让 Claude Code 在服务器上的 tmux 里常驻、开机自启，并自动点掉新版 Claude Code 加载开发中 channel 时弹的确认。原版假设 AI 跑在你自己电脑上。
+`server.ts` 原样未改。新增 `start-channel.sh`（`NYX_RESUME=<会话 id>` 时接着开旧窗口） 和 `claude-companion.service`：让 Claude Code 在服务器上的 tmux 里常驻、开机自启，并自动点掉新版 Claude Code 加载开发中 channel 时弹的确认。原版假设 AI 跑在你自己电脑上。
 
 ## `bridge/`（新增）
 

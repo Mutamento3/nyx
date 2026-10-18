@@ -35,6 +35,7 @@ import json
 import os
 import sys
 import time
+from datetime import datetime, timezone
 from pathlib import Path
 
 import httpx
@@ -256,8 +257,9 @@ class Bridge:
             "model": {"id": mid, "name": next((m["name"] for m in self.models if m["id"] == mid), mid)},
             "limits": limits,
             "context": {"used_pct": round(100 * ctx["used"] / ctx["size"]) if ctx.get("used") and ctx.get("size") else None,
-                        "size": ctx.get("size")},
-            "models": self.models, "model_applies": "next"})
+                        "used": ctx.get("used"), "size": ctx.get("size")},
+            "models": self.models, "model_applies": "next",
+            "thread": self.thread, "windows": await self.windows()})
 
     async def pick_model(self):
         """The model chosen on the chat page (POST /app/model on the relay), if any."""
@@ -313,6 +315,44 @@ class Bridge:
         inputs.insert(0, {"type": "text", "text": text or "(a picture)"})
         await self.run_turn(inputs)
 
+    # ---- windows: the gauge on the chat page can compact, start a new thread, or go back to an old one ----
+    async def windows(self):
+        try:
+            data = (await self.codex.call("thread/list", {"cwd": str(CWD), "limit": 20, "sortKey": "updated_at"}) or {}).get("data") or []
+        except Exception as e:
+            log("thread/list:", e)
+            return []
+        iso = lambda t: datetime.fromtimestamp(t, timezone.utc).isoformat() if t else None
+        return [{"sid": t["id"], "started": iso(t.get("createdAt")), "last": iso(t.get("updatedAt")), "messages": None,
+                 "usage_tokens": None, "last_text": (t.get("name") or t.get("preview") or "")[:60], "current": t["id"] == self.thread}
+                for t in data]
+
+    async def cmd_poller(self):
+        while True:
+            await asyncio.sleep(5)
+            try:
+                c = (await self.http.get(f"{RELAY}/app/window/cmd", headers=AUTH)).json() or {}
+            except Exception:
+                continue
+            if c.get("action"):
+                await self.queue.put({"cmd": c["action"], "sid": c.get("sid")})
+
+    async def window_cmd(self, m):
+        try:
+            if m["cmd"] == "compact":
+                await self.codex.call("thread/compact/start", {"threadId": self.thread})
+                log("compacting", self.thread)
+            elif m["cmd"] == "new":
+                self.save_state(threadId=None)
+                await self.open_thread()
+            elif m["cmd"] == "switch" and m.get("sid"):
+                self.save_state(threadId=m["sid"])
+                await self.open_thread()
+            self.ctx = None
+        except Exception as e:
+            log("window", m["cmd"], e)
+        await self.report()
+
     async def nudger(self):
         while NUDGE_MIN > 0:
             await asyncio.sleep(60)
@@ -322,6 +362,9 @@ class Bridge:
     async def worker(self):
         while True:
             m = await self.queue.get()
+            if m.get("cmd"):
+                await self.window_cmd(m)
+                continue
             if m.get("nudge"):
                 await self.run_turn([{"type": "text", "text": (
                     f"(Not a message — nobody typed. It's been quiet for a while. If there's something you want to say to "
@@ -340,7 +383,7 @@ class Bridge:
         await self.codex.start()
         await self.open_thread()
         await self.report()
-        await asyncio.gather(self.listen_relay(), self.worker(), self.nudger())
+        await asyncio.gather(self.listen_relay(), self.worker(), self.nudger(), self.cmd_poller())
 
 
 if __name__ == "__main__":
