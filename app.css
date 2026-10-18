@@ -60,6 +60,7 @@ button{ font:inherit; color:inherit; background:none; border:0; padding:0; curso
 .msg{ position:relative; display:flex; margin-top:14px; }
 .msg.cont{ margin-top:5px; }
 .msg .body{ max-width:min(76%, 520px); font-size:15.5px; line-height:1.66; overflow-wrap:anywhere; }
+@media (max-width:700px){ .msg{ margin-top:18px; } .msg .body{ max-width:min(63vw, 520px); font-size:13.5px; line-height:1.56; } .msg.ai .body{ line-height:1.7; } }   /* the same size as Shoreless on a phone (唯) */
 .msg .t{ font-family:var(--mono); font-size:9.5px; color:var(--faint); margin-left:8px; white-space:nowrap; }
 
 .msg.ai{ padding-left:32px; }
