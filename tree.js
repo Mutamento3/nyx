@@ -106,7 +106,7 @@
       var wd = Math.min(1.5, dpr); wcv.width = W * wd; wcv.height = H * wd; wcv.style.width = W + "px"; wcv.style.height = H + "px";
       // fit: the highest tip stops a finger below the header; the tree's edge is drawn, not cut by the screen (Yan)
       var head = 70, room = H - head - 8, span = G.H - G.top;
-      S = Math.min(W / G.W * 1.04, room / span) * 1.16; OX = -10; OY = H - G.H * S;   // a size up (唯), the crown may run past the header a little
+      S = Math.min(W / G.W * 1.04, room / span) * 1.34; OX = -26; OY = H - G.H * S;   // a size up (唯), the crown may run past the header a little
     }
     // a point on branch b, moved by tilt and wind according to its depth
     function at(b, p, k, n, tt) {
