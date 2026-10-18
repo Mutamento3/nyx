@@ -9,28 +9,38 @@
 (function () {
   function seeded(s) { return function () { s = s * 16807 % 2147483647; return s / 2147483647; }; }
 
+  // dry-brush streaks: where the ink runs thin toward the end of a stroke, the paper shows through in lines along it
+  function dry(r, k) {
+    var out = [];
+    for (var i = 0; i < k; i++) {
+      var dash = []; for (var d = 0; d < 5; d++) dash.push(18 + r() * 60, 3 + r() * 16);
+      out.push({ f: (r() - .5) * 1.6, lw: .8 + r() * 2, from: .05 + r() * .5, dash: dash });
+    }
+    return out;
+  }
   // the tree in a 390 × 844 frame (scaled to the screen), after Yan's tree.mjs
   function grow(night) {
-    var W = 390, H = 844, rnd = seeded(7), UPR = -Math.PI / 2 + .4, P = [];
+    var W = 390, H = 844, rnd = seeded(7), UPR = -Math.PI / 2 + .3, P = [];   // v1's bones: 唯 said the first one looked most like a tree
     function branch(x, y, ang, len, w, z, tier, maxTier, parent) {
       var pts = [[x, y]], a = ang, cx = x, cy = y, n = 14;
       for (var i = 1; i <= n; i++) {
         // a little wander; the wind carries only the trunk and the big limbs up and right — from the second tier on,
         // twigs go their own way so the hand opens (Yan)
-        a += (rnd() - .5) * .16 + (UPR - a) * (tier <= 1 ? .085 : .018);
+        a += (rnd() - .5) * .16 + (UPR - a) * .06;
         if (tier === 0 && a < -Math.PI / 2 - .12) a += (-Math.PI / 2 - .12 - a) * .5;   // the trunk doesn't curl back left
         if (cx < 60) a += (UPR - a) * .25; if (cx > W - 70) a -= .12;
         cx += Math.cos(a) * len / n; cy += Math.sin(a) * len / n; pts.push([cx, cy]);
       }
       var me = { pts: pts, w0: w, w1: w * (tier === 0 ? .22 : .5), z: z, tier: tier, parent: parent, kids: [] };
+      // after Dora Lazarevic's Europe (唯): the trunk is solid ink, limbs taper fast, twigs are pen hairlines
+      if (tier === 1) me.w1 = 2; else if (tier >= 2) { me.w0 = 1.15; me.w1 = .7; }
       P.push(me); if (parent) parent.kids.push(me);
       if (tier >= maxTier) return [{ x: cx, y: cy, a: a, b: me }];
       var kids = tier === 0 ? 3 : 2, ends = [];
       for (var k = 0; k < kids; k++) {
         var t = tier === 0 ? [.38, .62, .97][k] : [.5, .95][k], j = Math.min(n, Math.round(t * n)), bx = pts[j][0], by = pts[j][1];
         var wl = w + (w * (tier === 0 ? .22 : .5) - w) * j / n, side = (tier + k) % 2 ? 1 : -1;
-        var na = a + side * (tier >= 1 ? .62 + rnd() * .3 : (.5 + rnd() * .3) * (side < 0 ? .75 : 1));   // twigs at least ~35° apart
-        if (t > .9 && tier < 2) na = a + (na - a) * .3;   // the last child carries straight on from the parent's tail (Yan)
+        var na = a + side * (.5 + rnd() * .3) * (side < 0 ? .75 : 1);
         me.at = me.at || []; me.at.push(j);
         ends.push.apply(ends, branch(bx, by, na, len * (tier === 0 ? .6 : .62), wl * (tier === 0 ? .62 : .66),
           Math.max(-1, Math.min(1, z + (rnd() - .5) * .9)), tier + 1, maxTier, me));
@@ -42,7 +52,7 @@
     }
     // the same seed grows the same bones by day and night; the day just goes one tier further
     // always grow all three tiers so the bones are identical; the night side just doesn't draw the last one
-    var tips = branch(74, H + 30, -Math.PI / 2 + .04, 470, 15, 0, 0, 3, null);
+    var tips = branch(74, H + 30, -Math.PI / 2 + .04, 470, 18, 0, 0, 3, null);
     var top = Infinity; P.forEach(function (b) { b.pts.forEach(function (p) { if (p[1] < top) top = p[1]; }); });   // same frame day and night
     // (the night side drops the last tier when drawing; twigs that carry an entry stay)
     var leaves = [];
@@ -124,7 +134,7 @@
       }
       for (var i = 0; i <= n; i++) {
         var p = at(b, b.pts[i], i, n, tt), pp = at(b, b.pts[Math.max(0, i - 1)], Math.max(0, i - 1), n, tt), np = at(b, b.pts[Math.min(n, i + 1)], Math.min(n, i + 1), n, tt);
-        var dx = np[0] - pp[0], dy = np[1] - pp[1], d = Math.hypot(dx, dy) || 1, w = (b.w0 + (b.w1 - b.w0) * i / n) / 2 * S;
+        var dx = np[0] - pp[0], dy = np[1] - pp[1], d = Math.hypot(dx, dy) || 1, w = (b.w0 + (b.w1 - b.w0) * i / n) / 2 * S * (b.jit ? b.jit[i] : 1);
         L.push([p[0] - dy / d * w, p[1] + dx / d * w]); Rr.push([p[0] + dy / d * w, p[1] - dx / d * w]);
       }
       ctx.beginPath(); ctx.moveTo(L[0][0], L[0][1]);
@@ -134,9 +144,23 @@
       var near = (b.z + 1) / 2;
 
       ctx.filter = b.z < -.3 ? "blur(.6px)" : "none";
-      ctx.fillStyle = ink(b.root ? .5 : .35 + .65 * near); ctx.fill();
+      ctx.fillStyle = ink(b.root ? .8 : b.tier === 0 ? 1 : b.tier === 1 ? .78 + .2 * near : .55 + .35 * near); ctx.fill();
       var e = at(b, b.pts[n], n, n, tt);   // round the far end too, as its own shape so the winding can't punch a hole
       ctx.beginPath(); ctx.arc(e[0], e[1], b.w1 / 2 * S, 0, Math.PI * 2); ctx.fill();
+      if (b.dry) {   // the paper showing through the brush
+        ctx.strokeStyle = ink(0); ctx.lineCap = "butt";
+        b.dry.forEach(function (s) {
+          var i0 = Math.floor(s.from * n), hw = Math.hypot(L[i0][0] - Rr[i0][0], L[i0][1] - Rr[i0][1]) / 2;
+          if (hw < 4) return;   // too thin to show paper through
+          ctx.lineWidth = Math.min(s.lw * S, hw * .22); ctx.setLineDash(s.dash.map(function (v) { return v * S; })); ctx.beginPath();
+          for (var i = i0; i <= n; i++) {
+            var c = L[i], d2 = Rr[i], x = (c[0] + d2[0]) / 2 + (c[0] - d2[0]) / 2 * s.f * .8, y = (c[1] + d2[1]) / 2 + (c[1] - d2[1]) / 2 * s.f * .8;
+            if (i === i0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+          }
+          ctx.stroke();
+        });
+        ctx.setLineDash([]);
+      }
     }
     function frame(now) {
       var tt = (now - t0) / 1000;
