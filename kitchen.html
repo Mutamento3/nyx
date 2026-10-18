@@ -1,0 +1,339 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#ECE8E1">
+<title>Kitchen</title>
+<link href="https://cdn.jsdelivr.net/npm/@fontsource/noto-serif-sc@5.2.5/400.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/@fontsource/noto-serif-sc@5.2.5/600.min.css" rel="stylesheet">
+<link href="fonts/source-serif-4.css" rel="stylesheet">
+<script>
+  try { document.documentElement.dataset.side = localStorage.getItem("nyx_side") === "moon" ? "moon" : "sun"; } catch (e) { document.documentElement.dataset.side = "sun"; }
+</script>
+<script src="config.js"></script>
+<style>
+  /* Nyx — Kitchen (from Shoreless). Three tabs:
+     家里 Home — pots, seasonings, the fridge, what you usually buy; pick what's in the fridge, tap 就这些 to look up a recipe;
+                 nothing fits → your companion gets a note and writes one. At the bottom: what to buy next.
+     图鉴 Recipes — everything your companion wrote; tick the steps, 做过了 logs it; photos of what you made, with a comment back.
+     时间轴 Timeline — what you ate, day by day.
+     Data: {relay}/app/kitchen (kitchen.json in the relay's folder). */
+  :root{ --bg:#ECE8E1; --card:rgba(247,242,232,.78); --ink:#221E1C; --soft:#6B625C; --line:rgba(34,30,28,.14); --acc:#A4492A; --pick:rgba(164,73,42,.1); --tab:64px; --ai:"AI："; }
+  :root[data-side="moon"]{ --bg:#0C0A09; --card:rgba(42,32,28,.6); --ink:#E8C9B8; --soft:#BC9684; --line:rgba(235,198,178,.14); --acc:#C9785A; --pick:rgba(201,120,90,.16); }
+  *{ box-sizing:border-box; }
+  [hidden]{ display:none !important; }
+  html,body{ margin:0; background:var(--bg); color:var(--ink); font-family:"Source Serif 4",Georgia,"Noto Serif SC","Songti SC","STSong",serif; -webkit-tap-highlight-color:transparent; }
+  body{ min-height:100vh; padding:calc(env(safe-area-inset-top) + 8px) 16px calc(env(safe-area-inset-bottom) + var(--tab) + 80px); }
+  button{ font:inherit; color:inherit; }
+  .top{ display:flex; align-items:center; gap:8px; margin-bottom:6px; }
+  .back{ width:40px; height:40px; border:0; background:none; border-radius:50%; display:grid; place-items:center; margin-left:-8px; cursor:pointer; }
+  .back svg{ width:22px; height:22px; }
+  h1{ font-size:26px; font-weight:600; letter-spacing:.14em; margin:2px 0 16px; }
+  .sec{ margin:0 0 18px; }
+  .sec-h{ display:flex; align-items:baseline; justify-content:space-between; margin-bottom:8px; }
+  .sec-h b{ font-size:15px; letter-spacing:.14em; font-weight:600; }
+  .sec-h span{ font-size:12px; color:var(--soft); letter-spacing:.06em; }
+  .chips{ display:flex; flex-wrap:wrap; gap:8px; }
+  .chip{ position:relative; border:1px solid var(--line); background:var(--card); border-radius:12px; padding:7px 13px; font-size:15px; cursor:pointer; }
+  .chip.pick{ background:var(--pick); border-color:var(--acc); color:var(--acc); }
+  .chip.add{ color:var(--soft); border-style:dashed; background:transparent; }
+  .chip.staple{ background:transparent; }
+  .chip .x{ display:none; position:absolute; top:-7px; right:-7px; width:18px; height:18px; border-radius:50%; background:var(--ink); color:var(--bg); font-size:12px; line-height:18px; text-align:center; }
+  body.edit .chip .x{ display:block; }
+  .tidy{ border:0; background:none; font-size:12px; color:var(--soft); letter-spacing:.08em; cursor:pointer; padding:2px 0; }
+  /* 底部：选好的食材 + 就这些（只在「家里」），再下面三栏切换 */
+  .bar{ position:fixed; left:0; right:0; bottom:calc(env(safe-area-inset-bottom) + var(--tab)); padding:10px 16px; background:linear-gradient(to top, var(--bg) 70%, transparent); display:flex; align-items:center; gap:10px; z-index:3; }
+  .bar .sel{ flex:1; min-width:0; font-size:14px; color:var(--soft); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .bar .go{ border:0; background:var(--acc); color:#fff; border-radius:12px; padding:10px 20px; font-size:15px; letter-spacing:.12em; cursor:pointer; }
+  .bar .go:disabled{ opacity:.4; }
+  .tabbar{ position:fixed; left:0; right:0; bottom:0; height:calc(env(safe-area-inset-bottom) + var(--tab)); padding-bottom:env(safe-area-inset-bottom); display:flex; background:var(--card); border-top:1px solid var(--line); z-index:4; }
+  .tabbar button{ flex:1; border:0; background:none; font-size:14px; letter-spacing:.16em; color:var(--soft); cursor:pointer; position:relative; }
+  .tabbar button.on{ color:var(--ink); font-weight:600; }
+  .tabbar button.on::after{ content:""; position:absolute; left:50%; top:10px; width:4px; height:4px; margin-left:-2px; border-radius:50%; background:var(--acc); }
+  .card{ background:var(--card); border:1px solid var(--line); border-radius:16px; padding:14px 16px; margin-bottom:10px; cursor:pointer; }
+  .card .n{ font-size:17px; font-weight:600; letter-spacing:.06em; }
+  .card .m{ margin-top:4px; font-size:13px; color:var(--soft); line-height:1.6; }
+  .card .c{ float:right; font-size:12px; color:var(--acc); }
+  .note{ font-size:14px; color:var(--soft); line-height:1.8; padding:6px 2px 14px; }
+  .note b{ color:var(--acc); font-weight:400; }
+  /* 下次买什么 */
+  .buy{ display:flex; gap:12px; align-items:flex-start; padding:10px 0; border-top:1px solid var(--line); }
+  .buy:first-of-type{ border-top:0; }
+  .buy .bn{ flex:0 0 auto; min-width:4.5em; font-size:16px; font-weight:600; }
+  .buy .br{ font-size:13px; color:var(--soft); line-height:1.7; }
+  /* 菜谱详情 */
+  .dv{ position:fixed; inset:0; background:var(--bg); overflow-y:auto; padding:calc(env(safe-area-inset-top) + 8px) 18px calc(env(safe-area-inset-bottom) + 40px); transform:translateX(100%); transition:transform .3s cubic-bezier(.2,.8,.3,1); z-index:6; }
+  .dv.open{ transform:none; }
+  .dv h2{ font-size:22px; letter-spacing:.08em; margin:4px 0 10px; }
+  .kv{ font-size:14px; line-height:1.9; color:var(--soft); }
+  .kv i{ font-style:normal; color:var(--ink); }
+  ol.steps{ list-style:none; padding:0; margin:16px 0; counter-reset:s; }
+  ol.steps li{ counter-increment:s; position:relative; padding:12px 12px 12px 44px; margin-bottom:8px; background:var(--card); border:1px solid var(--line); border-radius:14px; font-size:16px; line-height:1.7; cursor:pointer; }
+  ol.steps li::before{ content:counter(s); position:absolute; left:14px; top:12px; width:20px; height:20px; border-radius:50%; border:1px solid var(--acc); color:var(--acc); font-size:12px; line-height:20px; text-align:center; }
+  ol.steps li.done{ color:var(--soft); text-decoration:line-through; text-decoration-color:rgba(164,73,42,.5); }
+  ol.steps li.done::before{ content:"✓"; background:var(--acc); color:#fff; }
+  .tip{ font-size:14px; line-height:1.8; padding:12px 14px; border-left:2px solid var(--acc); background:rgba(164,73,42,.04); border-radius:0 10px 10px 0; }
+  .cooked{ margin-top:18px; width:100%; border:0; background:var(--ink); color:var(--bg); border-radius:14px; padding:12px; font-size:15px; letter-spacing:.14em; cursor:pointer; }
+  .ph-h{ display:flex; align-items:baseline; justify-content:space-between; margin:22px 0 10px; }
+  .ph-h b{ font-size:15px; letter-spacing:.14em; }
+  .ph-add{ border:1px dashed var(--line); background:transparent; border-radius:10px; padding:5px 12px; font-size:13px; color:var(--soft); cursor:pointer; }
+  .ph{ background:var(--card); border:1px solid var(--line); border-radius:16px; overflow:hidden; margin-bottom:12px; }
+  .ph img{ display:block; width:100%; max-height:62vh; object-fit:cover; background:var(--line); }
+  .ph .pd{ padding:10px 14px 12px; }
+  .ph .pt{ font-size:12px; color:var(--soft); letter-spacing:.08em; }
+  .ph .pc{ margin-top:4px; font-size:14px; line-height:1.75; }
+  .ph .pc.wait{ color:var(--soft); }
+  .ph .pc::before{ content:var(--ai); color:var(--acc); }
+  .ph .pc.wait::before{ content:""; }
+  /* 时间轴：左边一条竖线，每天一个点 */
+  .tl{ position:relative; padding-left:26px; }
+  .tl::before{ content:""; position:absolute; left:6px; top:6px; bottom:0; width:1.5px; background:linear-gradient(to bottom, var(--acc), rgba(164,73,42,.15)); }
+  .day{ position:relative; margin-bottom:22px; }
+  .day::before{ content:""; position:absolute; left:-25px; top:5px; width:11px; height:11px; border-radius:50%; background:var(--bg); border:2px solid var(--acc); }
+  .day .dd{ font-size:14px; font-weight:600; letter-spacing:.1em; }
+  .day .dd small{ font-weight:400; color:var(--soft); margin-left:6px; letter-spacing:.04em; }
+  .meal{ margin-top:8px; background:var(--card); border:1px solid var(--line); border-radius:14px; padding:10px 12px; display:flex; gap:10px; align-items:flex-start; }
+  .meal img{ width:56px; height:56px; border-radius:10px; object-fit:cover; flex:none; }
+  .meal .mt{ flex:1; min-width:0; }
+  .meal .mn{ font-size:15px; }
+  .meal .mm{ font-size:12px; color:var(--soft); margin-top:2px; line-height:1.6; }
+  .meal .del{ border:0; background:none; color:var(--soft); font-size:12px; cursor:pointer; padding:2px 0 2px 6px; }
+  .tl-add{ width:100%; border:1px dashed var(--line); background:transparent; border-radius:14px; padding:10px; font-size:14px; color:var(--soft); letter-spacing:.1em; cursor:pointer; margin-bottom:18px; }
+  .toast{ position:fixed; left:50%; bottom:calc(env(safe-area-inset-bottom) + var(--tab) + 70px); transform:translateX(-50%); background:var(--ink); color:var(--bg); padding:7px 16px; border-radius:999px; font-size:13px; opacity:0; transition:opacity .25s; pointer-events:none; z-index:9; }
+  .toast.on{ opacity:1; }
+</style>
+</head>
+<body>
+<div class="top"><button class="back" id="home" aria-label="回去"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button></div>
+<h1 id="title">家里</h1>
+<div id="vk"></div>
+<div id="vd" hidden></div>
+<div id="vt" hidden></div>
+<div class="bar" id="bar"><span class="sel" id="sel">点冰箱里的食材</span><button class="go" id="go" disabled>就这些</button></div>
+<nav class="tabbar"><button class="on" data-t="k">家里</button><button data-t="d">图鉴</button><button data-t="t">时间轴</button></nav>
+<div class="dv" id="dv"></div>
+<div class="toast" id="toast"></div>
+<script>
+(function(){
+  var C = window.NYX || {}, RELAY = C.relay || "/relay", AI = C.aiName || "AI";
+  var SECRET = ""; try{ SECRET = localStorage.getItem("nyx_key") || ""; }catch(_){}
+  document.documentElement.style.setProperty("--ai", JSON.stringify(AI + "："));
+  var H = { Authorization: "Bearer " + SECRET };
+  var $ = function(id){ return document.getElementById(id); };
+  var esc = function(s){ return String(s == null ? "" : s).replace(/[&<>"]/g, function(c){ return { "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;" }[c]; }); };
+  var D = { pantry:{ tools:[], seasonings:[], ingredients:[], staples:[] }, recipes:[], log:[] }, picked = [], results = null, asked = null, pollT = null;
+  var GROUPS = [["tools","锅具","有什么用什么"], ["seasonings","调料",""], ["ingredients","冰箱","点了算今天要用的"], ["staples","常买","点一下＝买回来了，放进冰箱"]];
+  var TITLES = { k:"家里", d:"图鉴", t:"时间轴" };
+
+  function toast(t){ var e = $("toast"); e.textContent = t; e.classList.add("on"); clearTimeout(toast.t); toast.t = setTimeout(function(){ e.classList.remove("on"); }, 1800); }
+  function api(path, body){
+    return fetch(RELAY + "/app/kitchen" + path, body ? { method:"POST", headers:Object.assign({ "Content-Type":"application/json" }, H), body:JSON.stringify(body) } : { headers:H, cache:"no-store" })
+      .then(function(r){ if (!r.ok) throw new Error(r.status); return r.json(); });
+  }
+  function norm(d){ d.pantry = d.pantry || {}; ["tools","seasonings","ingredients","staples"].forEach(function(k){ d.pantry[k] = d.pantry[k] || []; }); d.recipes = d.recipes || []; d.log = d.log || []; return d; }
+  function load(){ return api("").then(function(d){ D = norm(d); render(); }).catch(function(){ toast("厨房的门没打开，等下再试"); }); }
+  // 一样东西算不算对上：口蘑 / 白口蘑、冷冻虾 / 虾 这种互相包含就算
+  function clean(a){ return String(a).replace(/（.*?）|\(.*?\)/g, "").replace(/^冷冻/, ""); }
+  // 包含只在短的那个至少两个字时算（不然「虾」会把「虾仁水饺」也当成虾）
+  function same(a, b){ a = clean(a); b = clean(b); if (a === b) return true; var s = a.length < b.length ? a : b, l = s === a ? b : a; return s.length >= 2 && l.indexOf(s) >= 0; }
+  function has(list, x){ return list.some(function(y){ return same(x, y); }); }
+  function savePantry(){ api("/pantry", D.pantry).catch(function(){ toast("没存上"); }); }
+  function img(file){ return RELAY + "/uploads/" + encodeURIComponent(file) + "?token=" + encodeURIComponent(SECRET); }
+  function dayKey(iso){ var d = new Date(iso); return isNaN(d) ? "" : d.getFullYear() + "-" + (d.getMonth() + 1) + "-" + d.getDate(); }
+  function fmtDate(iso){ var d = new Date(iso); return isNaN(d) ? "" : d.getFullYear() + "." + (d.getMonth() + 1) + "." + d.getDate(); }
+  function fmtTime(iso){ var d = new Date(iso); return isNaN(d) ? "" : String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"); }
+
+  // ---- 下次买什么：常买的、图鉴里差这一样就能做的、最近几天没吃过的，加分；刚吃过的减分 ----
+  var VEG = /菜|菇|蘑|花|瓜|茄|豆|笋|葱|椒|芹|菠|萝卜|西兰|生菜|番茄|藕|苗|芽/;
+  function suggest(){
+    var fridge = D.pantry.ingredients, now = Date.now(), cand = {};
+    D.pantry.staples.forEach(function(x){ cand[clean(x)] = x; });
+    D.recipes.forEach(function(r){ r.ingredients.forEach(function(x){ cand[clean(x)] = cand[clean(x)] || x; }); });
+    var fridgeHasVeg = fridge.some(function(x){ return VEG.test(x); });
+    var out = [];
+    Object.keys(cand).forEach(function(k){
+      var x = cand[k];
+      if (has(fridge, x)) return;
+      var score = 0, why = [];
+      var unlock = D.recipes.filter(function(r){ return has(r.ingredients, x) && r.ingredients.every(function(y){ return same(y, x) || has(fridge, y); }); });
+      if (unlock.length){ score += 3 * unlock.length; why.push("买了就能做「" + unlock[0].name + "」" + (unlock.length > 1 ? "等 " + unlock.length + " 道" : "")); }
+      else { var part = D.recipes.filter(function(r){ return has(r.ingredients, x); }); if (part.length){ score += 1; why.push("图鉴里「" + part[0].name + "」用得上"); } }
+      if (has(D.pantry.staples, x)){ score += 1.5; if (!why.length) why.push("你常买"); }
+      var last = 0;
+      D.log.forEach(function(e){ if ((e.ingredients || []).some(function(y){ return same(y, x); }) || same(e.name, x)) last = Math.max(last, +new Date(e.at)); });
+      var days = last ? (now - last) / 864e5 : 99;
+      if (days < 2.5){ score -= 3; why.push("前两天刚吃过"); }
+      else if (days >= 7){ score += 1.5; why.push(last ? "有一阵没吃了" : "时间轴上还没出现过"); }
+      if (!fridgeHasVeg && VEG.test(x)){ score += 2; why.push("冰箱里现在没有菜"); }
+      out.push({ x:x, score:score, why:why });
+    });
+    return out.sort(function(a, b){ return b.score - a.score; }).slice(0, 3);
+  }
+
+  function render(){
+    var h = "", edit = document.body.classList.contains("edit");
+    GROUPS.forEach(function(g){
+      var k = g[0], list = D.pantry[k] || [];
+      h += '<div class="sec"><div class="sec-h"><b>' + g[1] + '</b><span>' + (k === "ingredients" ? '<button class="tidy" id="tidy">' + (edit ? "好了" : "整理") + '</button>' : g[2]) + '</span></div><div class="chips">';
+      list.forEach(function(x, i){
+        var on = k === "ingredients" && picked.indexOf(x) >= 0;
+        h += '<button class="chip' + (on ? " pick" : "") + (k === "staples" ? " staple" : "") + '" data-k="' + k + '" data-i="' + i + '">' + esc(x) + '<span class="x" data-del="1">×</span></button>';
+      });
+      h += '<button class="chip add" data-add="' + k + '">＋</button></div></div>';
+    });
+    var can = D.recipes.filter(function(r){ return r.ingredients.length && r.ingredients.every(function(x){ return has(D.pantry.ingredients, x); }); });
+    if (results) {
+      h += '<div class="sec"><div class="sec-h"><b>翻到的</b><span>' + esc(picked.join("、")) + '</span></div>';
+      if (results.length) h += results.map(card).join("");
+      else h += '<div class="note">图鉴里还没有用这些做的。' + (asked ? '<b>已经在聊天里喊' + esc(AI) + '了</b>，写好会出现在这儿，也会在聊天里告诉你。' : "") + '</div>';
+      h += "</div>";
+    } else if (can.length) {
+      h += '<div class="sec"><div class="sec-h"><b>冰箱里现有的就能做</b><span></span></div>' + can.map(card).join("") + "</div>";
+    }
+    var sg = suggest();
+    if (sg.length){
+      h += '<div class="sec"><div class="sec-h"><b>下次买什么</b><span>看常买、图鉴和时间轴</span></div><div class="card" style="cursor:default">' +
+        sg.map(function(s){ return '<div class="buy"><span class="bn">' + esc(s.x) + '</span><span class="br">' + esc(s.why.join("；") || "可以试试") + "</span></div>"; }).join("") + "</div></div>";
+    }
+    $("vk").innerHTML = h;
+    $("sel").textContent = picked.length ? "已选：" + picked.join("、") : "点冰箱里的食材";
+    $("go").disabled = !picked.length;
+    renderDex(); renderTimeline();
+  }
+  function card(r){
+    return '<div class="card" data-r="' + esc(r.id) + '">' + (r.cooked ? '<span class="c">做过 ' + r.cooked + ' 次</span>' : "") +
+      '<div class="n">' + esc(r.name) + ((r.photos || []).length ? ' <span style="font-size:12px;color:var(--soft);font-weight:400">· ' + r.photos.length + ' 张返图</span>' : "") + '</div><div class="m">' + esc(r.ingredients.join("、")) + (r.tools.length ? " · " + esc(r.tools.join("、")) : "") + '</div></div>';
+  }
+  function renderDex(){
+    var list = D.recipes.slice().reverse();
+    $("vd").innerHTML = '<div class="note">' + esc(AI) + '写给你的全部菜谱，一共 ' + list.length + ' 道。</div>' + list.map(card).join("");
+  }
+  function renderTimeline(){
+    var days = {}, order = [];
+    D.log.slice().sort(function(a, b){ return a.at < b.at ? 1 : -1; }).forEach(function(e){
+      var k = dayKey(e.at); if (!days[k]){ days[k] = []; order.push(k); } days[k].push(e);
+    });
+    var wk = "日一二三四五六", h = '<button class="tl-add" id="tlAdd">＋ 记一笔今天吃了什么</button><div class="tl">';
+    if (!order.length) h += '<div class="note">还没有记录。做完菜点「做过了」会自动记进来，外卖、随便吃了点也可以手记。</div>';
+    order.forEach(function(k){
+      var first = days[k][0], d = new Date(first.at);
+      h += '<div class="day"><div class="dd">' + (d.getMonth() + 1) + "月" + d.getDate() + "日<small>周" + wk[d.getDay()] + "</small></div>";
+      days[k].forEach(function(e){
+        var r = e.recipe && D.recipes.filter(function(x){ return x.id === e.recipe; })[0];
+        var ph = r && (r.photos || []).filter(function(p){ return dayKey(p.at) === k; })[0];
+        h += '<div class="meal"' + (r ? ' data-r="' + esc(r.id) + '"' : "") + '>' + (ph ? '<img loading="lazy" src="' + img(ph.file) + '" alt="">' : "") +
+          '<div class="mt"><div class="mn">' + esc(e.name) + '</div><div class="mm">' + esc(fmtTime(e.at)) + ((e.ingredients || []).length ? " · " + esc(e.ingredients.join("、")) : "") + (e.note ? "<br>" + esc(e.note) : "") + "</div></div>" +
+          '<button class="del" data-del-log="' + esc(e.at) + '">删</button></div>';
+      });
+      h += "</div>";
+    });
+    $("vt").innerHTML = h + "</div>";
+  }
+  function openRecipe(id){
+    var r = D.recipes.filter(function(x){ return x.id === id; })[0]; if (!r) return;
+    var miss = r.seasonings.filter(function(x){ return !has(D.pantry.seasonings, x); });
+    $("dv").innerHTML = '<div class="top"><button class="back" id="dvBack" aria-label="回去"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button></div>' +
+      '<h2>' + esc(r.name) + '</h2>' +
+      '<div class="kv">食材　<i>' + esc(r.ingredients.join("、")) + '</i><br>调料　<i>' + esc(r.seasonings.join("、") || "—") + '</i>' + (miss.length ? '　<span style="color:var(--acc)">（缺 ' + esc(miss.join("、")) + '）</span>' : "") +
+      '<br>用　　<i>' + esc(r.tools.join("、") || "—") + '</i></div>' +
+      '<ol class="steps">' + r.steps.map(function(s){ return "<li>" + esc(s) + "</li>"; }).join("") + "</ol>" +
+      (r.tip ? '<div class="tip">' + esc(r.tip) + "</div>" : "") +
+      '<button class="cooked" id="cooked">做过了' + (r.cooked ? "（第 " + (r.cooked + 1) + " 次）" : "") + "</button>" +
+      '<div class="ph-h"><b>返图</b><button class="ph-add" id="phAdd">＋ 传一张</button></div>' +
+      '<input type="file" id="phFile" accept="image/*" hidden>' +
+      ((r.photos || []).slice().reverse().map(function(ph){
+        return '<div class="ph"><img loading="lazy" src="' + img(ph.file) + '" alt="">' +
+          '<div class="pd"><div class="pt">' + esc(fmtDate(ph.at)) + '</div><div class="pc' + (ph.comment ? "" : " wait") + '">' + esc(ph.comment || "等" + AI + "看图写评语…") + "</div></div></div>";
+      }).join("") || '<div class="note">做完拍一张传上来，我给你写评语。</div>');
+    $("dv").classList.add("open");
+    $("dvBack").onclick = function(){ $("dv").classList.remove("open"); };
+    $("dv").querySelectorAll("ol.steps li").forEach(function(li){ li.onclick = function(){ li.classList.toggle("done"); }; });
+    $("phAdd").onclick = function(){ $("phFile").click(); };
+    $("phFile").onchange = function(){
+      var f = this.files && this.files[0]; if (!f) return;
+      toast("传上去…");
+      fetch(RELAY + "/app/upload?name=" + encodeURIComponent(f.name || "photo.jpg"), { method:"POST", headers:Object.assign({ "Content-Type": f.type || "image/jpeg" }, H), body:f })
+        .then(function(res){ if (!res.ok) throw 0; return res.json(); })
+        .then(function(up){ return api("/photo", { id:r.id, file:up.url.split("/").pop() }); })
+        .then(function(d){ (r.photos = r.photos || []).push(d.photo); toast("收到了，等我写评语"); openRecipe(r.id); waitComment(r.id, d.photo.file); })
+        .catch(function(){ toast("没传上"); });
+    };
+    $("cooked").onclick = function(){
+      api("/cooked", { id:r.id }).then(function(){ toast("记下了，也记进时间轴了"); $("dv").classList.remove("open"); load(); }).catch(function(){ toast("没记上"); });
+    };
+  }
+  // 传完图隔一会儿翻一次，评语写好了就刷出来
+  function waitComment(rid, file){
+    var tries = 0, t = setInterval(function(){
+      if (++tries > 60) return clearInterval(t);
+      api("").then(function(d){
+        var r = d.recipes.filter(function(x){ return x.id === rid; })[0];
+        var ph = r && (r.photos || []).filter(function(p){ return p.file === file; })[0];
+        if (ph && ph.comment){ clearInterval(t); D = norm(d); render(); if ($("dv").classList.contains("open")) openRecipe(rid); toast(AI + "写好评语了"); }
+      }).catch(function(){});
+    }, 6000);
+  }
+
+  document.body.addEventListener("click", function(e){
+    var t = e.target;
+    var tab = t.closest(".tabbar button");
+    if (tab){
+      var v = tab.dataset.t;
+      document.querySelectorAll(".tabbar button").forEach(function(b){ b.classList.toggle("on", b === tab); });
+      $("vk").hidden = v !== "k"; $("vd").hidden = v !== "d"; $("vt").hidden = v !== "t"; $("bar").hidden = v !== "k";
+      $("title").textContent = TITLES[v]; window.scrollTo(0, 0); return;
+    }
+    if (t.id === "tidy"){ document.body.classList.toggle("edit"); render(); return; }
+    if (t.id === "tlAdd"){
+      var what = (prompt("今天吃了什么？") || "").trim();
+      if (what) api("/log", { name:what, ingredients:D.pantry.ingredients.filter(function(x){ return what.indexOf(clean(x)) >= 0; }) }).then(function(d){ D.log = d.log; render(); toast("记下了"); }).catch(function(){ toast("没记上"); });
+      return;
+    }
+    var dl = t.closest("[data-del-log]");
+    if (dl){ if (confirm("删掉这一条？")) api("/log", { delete:dl.dataset.delLog }).then(function(d){ D.log = d.log; render(); }); return; }
+    var add = t.closest("[data-add]");
+    if (add){
+      var name = (prompt("加点什么？") || "").trim();
+      if (name){ D.pantry[add.dataset.add].push(name); savePantry(); render(); }
+      return;
+    }
+    var chip = t.closest(".chip[data-k]");
+    if (chip){
+      var k = chip.dataset.k, i = +chip.dataset.i, x = D.pantry[k][i];
+      if (t.dataset.del || document.body.classList.contains("edit")){
+        D.pantry[k].splice(i, 1); picked = picked.filter(function(p){ return p !== x; }); savePantry(); render(); return;
+      }
+      if (k === "staples"){   // 常买的点一下＝买回来了
+        if (!has(D.pantry.ingredients, x)){ D.pantry.ingredients.push(x); savePantry(); render(); toast(x + " 放进冰箱了"); }
+        else toast("冰箱里已经有了");
+        return;
+      }
+      if (k !== "ingredients") return;
+      picked = picked.indexOf(x) >= 0 ? picked.filter(function(p){ return p !== x; }) : picked.concat(x);
+      results = null; asked = null; render(); return;
+    }
+    var c = t.closest("[data-r]");
+    if (c){ openRecipe(c.dataset.r); return; }
+  });
+  $("go").onclick = function(){
+    if (!picked.length) return;
+    results = D.recipes.filter(function(r){ return picked.every(function(p){ return has(r.ingredients, p); }); });
+    if (!results.length){
+      asked = picked.slice();
+      api("/ask", { picked:asked }).then(function(){ toast("喊" + AI + "了"); }).catch(function(){ toast("没喊出去，去聊天里叫一声"); asked = null; render(); });
+      clearInterval(pollT); var n0 = D.recipes.length, tries = 0;
+      pollT = setInterval(function(){
+        if (++tries > 60) return clearInterval(pollT);
+        api("").then(function(d){ if (d.recipes.length > n0){ clearInterval(pollT); D = norm(d); results = D.recipes.filter(function(r){ return asked && asked.every(function(p){ return has(r.ingredients, p); }); }); render(); toast(AI + "写好了"); } }).catch(function(){});
+      }, 6000);
+    }
+    render();
+    window.scrollTo({ top:document.body.scrollHeight, behavior:"smooth" });
+  };
+  $("home").onclick = function(){ location.assign("index.html"); };
+  load();
+})();
+</script>
+</body>
+</html>

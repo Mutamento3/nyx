@@ -19,9 +19,16 @@ window.NYX = {
   apps: [
     { id: "chat", en: "Chat", zh: "聊天", art: "tokens" },
     { id: "listen", en: "Listen", zh: "一起听", href: "listen.html", art: "sampling" },
-    { id: "attic", en: "Attic", zh: "杂物间", href: "attic.html", art: "clusters" },
-    { id: "room", en: "Room", zh: "房间", href: "room.html", art: "context" },
-    { id: "hold", en: "Hold", zh: "底舱", art: "beam", apps: [{ id: "board", en: "Board", zh: "工程板" }, { id: "heart", en: "Heart", zh: "心脏" }] }   // a folder, like Shoreless's 底舱: the board and the heart
+    // a folder: one block on the home page, a small heading with its rooms in the drawer (as in Shoreless)
+    { id: "home", en: "Home", zh: "小家", art: "clusters", apps: [
+      { id: "attic", en: "Attic", zh: "杂物间", href: "attic.html" },
+      { id: "room", en: "Room", zh: "房间", href: "room.html" }] },
+    { id: "hold", en: "Hold", zh: "底舱", art: "beam", apps: [
+      { id: "memory", en: "Memory", zh: "记忆" },        // add href: "<your Ombre-Brain / Memory Galaxy address>" once it's set up
+      { id: "board", en: "Board", zh: "工程板" },
+      { id: "heart", en: "Heart", zh: "心脏" }] },
+    { id: "life", en: "Life", zh: "生活", art: "context", apps: [
+      { id: "kitchen", en: "Kitchen", zh: "厨房", href: "kitchen.html" }] }
   ],
 
   // Room: an empty room to furnish with .glb files — docs/room-blender.md

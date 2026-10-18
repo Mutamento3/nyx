@@ -141,6 +141,20 @@
       }).catch(function () { Wn.body.innerHTML = '<p class="none">Couldn\u2019t get the list.</p>'; });
     }
 
-    return { board: board, heart: heart, folder: folder, windows: windows };
+    /* ---------- memory, when there's none wired up yet: how to get one ---------- */
+    var Mm = null;
+    function memory() {
+      if (!Mm) Mm = sheet('Memory <small>记忆</small>');
+      Mm.body.innerHTML = '<div class="memo">'
+        + "<p>There's no memory wired up here yet. Out of the box, your companion keeps notes in <code>~/companion/memory/</code> on the server (you can read them in the Heart). For a real memory, two layers:</p>"
+        + '<p><b>1 · Ombre-Brain</b> — the memory itself: a store your companion writes to and recalls from by meaning, with feelings and time attached. '
+        + 'By P0luz, MIT. <a href="https://github.com/P0luz/Ombre-Brain" target="_blank" rel="noopener">github.com/P0luz/Ombre-Brain</a></p>'
+        + "<p><b>2 · Memory Galaxy</b> — a view on top of Ombre-Brain: the memories as a starfield you can wander. By baci on Xiaohongshu (小红书 baci老师), who has a video walking through the setup. Install Ombre-Brain first, then this.</p>"
+        + "<p>Once it's running, put its address in <code>config.js</code> as <code>href</code> on the Memory entry, and this row opens it.</p>"
+        + "<p class=\"zh\">还没接记忆。默认是写在服务器上的 <code>~/companion/memory/</code>（心脏里能看）。要真的记忆，分两层：先装 <b>Ombre-Brain</b>（记忆本身，P0luz，MIT），再在上面接<b>记忆星图</b>（小红书 baci老师 做的美化，有教学视频）。装好以后把地址写进 <code>config.js</code> 里 Memory 那一行的 <code>href</code>。</p></div>";
+      Mm.open();
+    }
+
+    return { board: board, heart: heart, folder: folder, windows: windows, memory: memory };
   };
 })();

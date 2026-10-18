@@ -35,14 +35,30 @@
     else if (a.apps && hold) hold.folder(a, openApp);
     else if ((a.id === "board" || a.id === "heart") && hold) hold[a.id]();
     else if (a.href) location.href = a.href;
+    else if (a.id === "memory" && hold) hold.memory();
   }
   $("back").onclick = function () { show("home"); };
   function openDrawer() { $("drawer").classList.add("open"); $("drawer").setAttribute("aria-hidden", "false"); }
   function closeDrawer() { $("drawer").classList.remove("open"); $("drawer").setAttribute("aria-hidden", "true"); }
   $("menu").onclick = openDrawer; $("drawer").querySelector(".sh").onclick = closeDrawer;
   $("drawerTitle").textContent = C.title || "Nyx"; $("homeTitle").textContent = (C.title || "Nyx").toUpperCase();
-  $("drawerList").innerHTML = APPS.map(function (a, i) { return '<button type="button" data-i="' + i + '">' + esc(a.en) + (a.zh ? "<small>" + esc(a.zh) + "</small>" : "") + "</button>"; }).join("");
-  $("drawerList").querySelectorAll("button").forEach(function (b) { b.onclick = function () { openApp(APPS[+b.dataset.i]); }; });
+  // the drawer, as in Shoreless: a line icon on each row; a folder becomes a small clay heading with its rooms under it
+  var IC = { chat: '<path d="M21 11.5a8.5 8.5 0 0 1-12.3 7.6L3 21l1.9-5.7A8.5 8.5 0 1 1 21 11.5Z"/>',
+    listen: '<path d="M9 18V5.5l11-2V16"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="17.5" cy="16" r="2.5"/>',
+    attic: '<path d="M3 10l9-6 9 6"/><path d="M5 9v11h14V9"/><path d="M9 20v-6h6v6"/><path d="M8 12h.01M16 12h.01"/>',
+    room: '<path d="M6 20V9a6 6 0 0 1 12 0v11"/><path d="M4 20h16"/><path d="M14.5 14h.01"/>',
+    bedroom: '<path d="M3 18v-6a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v6"/><path d="M3 18h18M5 10V6.5A1.5 1.5 0 0 1 6.5 5h11A1.5 1.5 0 0 1 19 6.5V10"/><path d="M7 10h4v-2H7zM13 10h4v-2h-4z"/>',
+    memory: '<path d="M12 3.5c.8 5 3.5 7.7 8.5 8.5-5 .8-7.7 3.5-8.5 8.5-.8-5-3.5-7.7-8.5-8.5 5-.8 7.7-3.5 8.5-8.5Z"/>',
+    board: '<rect x="3.5" y="4" width="17" height="16" rx="2.2"/><path d="M9 4v16M15 4v16"/><path d="M5.5 8h1.8M11 8h1.8M11 11.5h1.8M17 8h1.8"/>',
+    heart: '<path d="M12 20s-7.5-4.4-7.5-10A4.3 4.3 0 0 1 12 7.4 4.3 4.3 0 0 1 19.5 10c0 5.6-7.5 10-7.5 10Z"/><path d="M7 12h2.5l1.2-2.2 2 4.4 1.3-2.2H17"/>',
+    kitchen: '<path d="M4 11h16"/><path d="M5 11a7 7 0 0 0 14 0"/><path d="M9 6.5c0-1 1-1.5 1-2.5M13 6.5c0-1 1-1.5 1-2.5"/><path d="M12 18v2.5M8.5 20.5h7"/>',
+    link: '<path d="M14 5h5v5"/><path d="M19 5l-8 8"/><path d="M17 14v5H5V7h5"/>' };
+  function icon(a) { var d = IC[a.icon || a.id] || IC.link; return '<svg viewBox="0 0 24 24" aria-hidden="true">' + d + "</svg>"; }
+  var rows = [], row = function (a) { rows.push(a); return '<button type="button" class="ctr" data-r="' + (rows.length - 1) + '">' + icon(a) + "<span>" + esc(a.en) + (a.zh ? "<small>" + esc(a.zh) + "</small>" : "") + "</span></button>"; };
+  $("drawerList").innerHTML = APPS.map(function (a) {
+    return a.apps ? '<div class="gp">' + esc(a.en) + (a.zh ? "<small>" + esc(a.zh) + "</small>" : "") + "</div>" + a.apps.map(row).join("") : row(a);
+  }).join("");
+  $("drawerList").querySelectorAll(".ctr").forEach(function (b) { b.onclick = function () { openApp(rows[+b.dataset.r]); }; });
   // swipe right opens the drawer, left closes it (home only)
   (function () { var sx = null, sy = 0, H = $("home");
     H.addEventListener("touchstart", function (e) { sx = e.touches[0].clientX; sy = e.touches[0].clientY; }, { passive: true });
@@ -79,9 +95,24 @@
       return r.json();
     });
   }
+  var stateLabel = "offline", spinT = 0;
   function setState(on, label) {
     $("state").classList.toggle("on", !!on);
-    $("state").querySelector("em").textContent = label || (on ? "online" : "offline");
+    stateLabel = label || (on ? "online" : "offline");
+    if (!spinT) $("state").querySelector("em").textContent = stateLabel;
+  }
+  // while it's answering: the Claude Code star turning in the header, and a new word every two seconds (as in Shoreless)
+  var SPIN = ["\u00b7", "\u2722", "\u2736", "\u273b", "\u273d", "\u273b", "\u2736", "\u2722"];
+  var VERBS = C.verbs || ["Pondering", "Noodling", "Percolating", "Mulling", "Brewing", "Musing", "Doodling", "Simmering", "Whisking", "Daydreaming", "Scheming", "Painting"];
+  function spin(on) {
+    var em = $("state").querySelector("em");
+    if (on && !spinT) {
+      var pick = function (p) { var v; do { v = VERBS[Math.floor(Math.random() * VERBS.length)]; } while (v === p && VERBS.length > 1); return v; };
+      var verb = pick(), i = 0, n = 0;
+      em.innerHTML = '<b class="spin">\u00b7</b><span>' + verb + "\u2026</span>";
+      var sp = em.querySelector(".spin"), vb = em.querySelector("span");
+      spinT = setInterval(function () { i = (i + 1) % SPIN.length; sp.textContent = SPIN[i]; if (++n % 17 === 0) { verb = pick(verb); vb.textContent = verb + "\u2026"; } }, 120);
+    } else if (!on && spinT) { clearInterval(spinT); spinT = 0; em.textContent = stateLabel; }
   }
 
   var streamCtl = null, retry = 0, watchdog = 0;
@@ -212,6 +243,7 @@
 
   var typingEl = null;
   function typing(on) {
+    spin(on);
     if (on && !typingEl) { typingEl = document.createElement("div"); typingEl.id = "typing"; typingEl.innerHTML = "<i></i><i></i><i></i>"; log.appendChild(typingEl); if (nearBottom(160)) toBottom(); }
     if (!on && typingEl) { typingEl.remove(); typingEl = null; }
   }

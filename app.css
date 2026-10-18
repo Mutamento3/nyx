@@ -46,6 +46,7 @@ button{ font:inherit; color:inherit; background:none; border:0; padding:0; curso
 #state{ font-size:12px; font-style:italic; color:var(--faint); display:flex; align-items:center; gap:6px; }
 #state i{ width:5px; height:5px; border-radius:50%; background:currentColor; }
 #state.on{ color:var(--soft); } #state.on i{ background:var(--accent); }
+#state .spin{ display:inline-block; width:1.1em; text-align:center; font-style:normal; font-weight:400; color:#FF7A2E; text-shadow:0 0 6px rgba(255,122,46,.45); margin-right:3px; }
 .flip{ width:40px; height:40px; border-radius:50%; border:1px solid var(--hair); display:grid; place-items:center; }
 .flip span{ width:14px; height:14px; border-radius:50%; background:var(--ink); transition:box-shadow .6s, background .6s; }
 :root[data-side="moon"] .flip span{ background:transparent; box-shadow:inset -5px -1px 0 0 var(--ink); }
@@ -156,9 +157,14 @@ button{ font:inherit; color:inherit; background:none; border:0; padding:0; curso
 #drawer.open{ pointer-events:auto; } #drawer.open .sh{ opacity:1; } #drawer.open .pn{ transform:none; box-shadow:10px 0 30px rgba(0,0,0,.2); }
 #drawer .hd{ display:flex; align-items:center; gap:10px; padding:0 8px 18px; font-size:22px; }
 #drawer .hd i{ width:10px; height:10px; border-radius:50%; background:var(--accent); }
-#drawerList button{ display:block; width:100%; text-align:left; padding:11px 8px; font-size:16px; border-radius:10px; }
-#drawerList button:active{ background:rgba(127,110,100,.12); }
-#drawerList small{ margin-left:8px; font-size:11px; color:var(--faint); letter-spacing:.06em; }
+#drawerList .ctr{ display:flex; align-items:center; gap:12px; width:100%; text-align:left; padding:11px 10px; font-size:16px; border-radius:12px; }
+#drawerList .ctr:active{ background:rgba(215,128,94,.12); }
+#drawerList .ctr svg{ width:20px; height:20px; flex:none; fill:none; stroke:currentColor; stroke-width:1.6; stroke-linecap:round; stroke-linejoin:round; }
+:root[data-side="moon"] #drawerList .ctr svg{ color:#D97757; }
+#drawerList .gp{ padding:16px 10px 6px; font-size:11px; letter-spacing:.2em; text-transform:uppercase; color:#A4492A; }
+:root[data-side="moon"] #drawerList .gp{ color:#B9705A; }
+#drawerList small{ margin-left:8px; font-size:11px; color:var(--faint); letter-spacing:.06em; text-transform:none; font-weight:400; }
+#drawerList .gp small{ opacity:.8; }
 
 /* ── room header back ── */
 .top{ gap:8px; }
@@ -352,3 +358,9 @@ button{ font:inherit; color:inherit; background:none; border:0; padding:0; curso
 .hold .file.win .wt{ font-size:12.5px; color:var(--soft); font-family:var(--serif); }
 .hold .file.win.cur{ cursor:default; }
 .hold .file.win .wx{ font-family:var(--serif); font-size:14px; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.hold .memo{ padding:2px 4px 10px; font-size:14.5px; line-height:1.75; }
+.hold .memo p{ margin:0 0 12px; }
+.hold .memo b{ font-weight:500; }
+.hold .memo a{ color:var(--accent); word-break:break-all; }
+.hold .memo code{ font-family:var(--mono); font-size:12px; background:var(--hair); padding:1px 5px; border-radius:5px; }
+.hold .memo .zh{ color:var(--soft); font-size:14px; border-top:1px solid var(--hair); padding-top:12px; }
