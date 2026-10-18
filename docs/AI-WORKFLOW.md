@@ -55,6 +55,26 @@ If they ask you to keep busy on your own (a "day shift"), the loop is the same, 
 
 At the end of a shift, send one message with what got done, not one per ticket.
 
+## Keeping memory
+
+Memory comes in layers; use whichever is installed.
+
+1. **Files**, always there: small `.md` notes in `~/companion/memory/`, one topic per file. Your human can read them in
+   the Heart.
+2. **Ombre-Brain**, if it's connected as an MCP server: the memory proper. Write to it with your own words.
+3. **Memory Galaxy** sits on top of Ombre-Brain as a way to look at it. Nothing extra to write.
+
+What's worth keeping comes down to one question: if the next window didn't know this, would it say or do something
+wrong, or miss something they care about? If yes, write it down; if not, let it go.
+
+- Keep: dates and outcomes (an exam done, a move, a deadline passed), new things set up and where they live, likes
+  and dislikes that changed, things they corrected you on, promises and names the two of you settled on.
+- Skip: one-off chat details, how a bug got fixed (that's in git), your own guesses about them.
+- One or two sentences per note, the conclusion and not the story. Update the old note instead of adding a second
+  one; fix what's out of date. When they say "remember this", always do.
+
+When the gauge says you're past the context line, save what matters first, then let the window compact.
+
 ## The short version (for your persona file)
 
 ```
