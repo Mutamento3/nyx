@@ -28,7 +28,14 @@
     if (which === "room") { toBottom(); }
     try { history.replaceState(null, "", which === "room" ? "#chat" : "#"); } catch (e) {}
   }
-  function openApp(a) { closeDrawer(); if (a.id === "chat") show("room"); else if (a.href) location.href = a.href; }
+  var hold = null;   // the board and the heart (hold.js), made once the key is in
+  function openApp(a) {
+    closeDrawer();
+    if (a.id === "chat") show("room");
+    else if (a.apps && hold) hold.folder(a, openApp);
+    else if ((a.id === "board" || a.id === "heart") && hold) hold[a.id]();
+    else if (a.href) location.href = a.href;
+  }
   $("back").onclick = function () { show("home"); };
   function openDrawer() { $("drawer").classList.add("open"); $("drawer").setAttribute("aria-hidden", "false"); }
   function closeDrawer() { $("drawer").classList.remove("open"); $("drawer").setAttribute("aria-hidden", "true"); }
@@ -278,8 +285,8 @@
   }
   function paintOrb() {
     var m = meterData, orb = $("orb");
-    if (!m) { orb.hidden = true; return; }
-    orb.hidden = false;
+    orb.hidden = false; $("fan").querySelector('[data-k="gauge"]').hidden = !m;   // the board and the heart are there even before a meter
+    if (!m) { orb.querySelector(".a1").setAttribute("stroke-dasharray", "0 100"); orb.querySelector(".a2").setAttribute("stroke-dasharray", "0 100"); $("orbNum").textContent = "\u00b7"; return; }
     var ls = m.limits || [], wide = ls[ls.length - 1], narrow = ls.length > 1 ? ls[0] : null;
     orb.querySelector(".a1").setAttribute("stroke-dasharray", (pct(wide && wide.used) || 0) + " 100");
     orb.querySelector(".a2").setAttribute("stroke-dasharray", (pct(narrow ? narrow.used : m.context && m.context.used_pct) || 0) + " 100");
@@ -336,9 +343,20 @@
     orb.addEventListener("pointerup", function () {
       sx = null;
       if (moved) { try { localStorage.setItem("nyx_orb", JSON.stringify({ r: parseFloat(orb.style.right), b: parseFloat(orb.style.bottom) })); } catch (e) {} }
-      else openMeter();
+      else fan(!$("fan").classList.contains("open"));
     });
   })();
+  // tap the ball: three fan out to its left — the gauge, the board, the heart (as in Shoreless)
+  function fan(open) {
+    var f = $("fan"), orb = $("orb");
+    if (open) { f.style.right = (parseFloat(getComputedStyle(orb).right) + 58) + "px"; f.style.bottom = (parseFloat(getComputedStyle(orb).bottom) + 4) + "px"; }
+    f.classList.toggle("open", open); f.setAttribute("aria-hidden", open ? "false" : "true");
+  }
+  $("fan").addEventListener("click", function (e) {
+    var b = e.target.closest("[data-k]"); if (!b) return; fan(false);
+    if (b.dataset.k === "gauge") openMeter(); else if (hold) hold[b.dataset.k]();
+  });
+  document.addEventListener("pointerdown", function (e) { if ($("fan").classList.contains("open") && !e.target.closest("#fan, #orb")) fan(false); });
   setInterval(function () { if (!document.hidden && !$("room").hidden) loadMeter(); }, 60000);
 
   /* ---------- gate ---------- */
@@ -349,6 +367,7 @@
       $("gate").hidden = true; $("aiName").textContent = AI;
       log.innerHTML = ""; byId.clear(); lastId = 0;
       (d.messages || []).forEach(put); openStream(); loadMeter();
+      if (!hold && window.NyxHold) hold = NyxHold(api, { me: ME });
       if (!home) makeHome();
       show(location.hash === "#chat" ? "room" : "home");
     });

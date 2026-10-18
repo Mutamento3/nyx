@@ -68,6 +68,8 @@ Optional, for the other rooms:
 | GET | `/app/meter` | `{ backend, model:{id,name}, limits:[{label, used, resets_at}], context:{used_pct}, models:[{id,name}], model_applies, chosen }` — the floating ball in the chat |
 | POST | `/app/model` | `{ model }` — switch the companion's model from the floating ball |
 | GET | `/app/usage` | `{ five_hour: { used, resets_at }, seven_day: {…} }` — Claude Code usage limits, see `relay/README.md` |
+| GET/POST | `/app/board`, `/app/board/<id>` | the engineering board in the Hold; the AI uses `relay/board.py` (`ls`, `claim`, `done`) |
+| GET | `/app/heart`, `/app/heart/file?path=` | read-only: `~/companion/CLAUDE.md` or `AGENTS.md`, `~/companion/memory/*.md`, the relay code; keys are blanked |
 
 `picks` is a list of who marked a picture; anything non-empty shows a small star (handy if your companion can mark things it likes).
 

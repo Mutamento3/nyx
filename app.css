@@ -275,3 +275,65 @@ button{ font:inherit; color:inherit; background:none; border:0; padding:0; curso
 #drawer .homes button{ font:italic 400 15px/1 var(--serif); padding:8px 14px; border-radius:99px; box-shadow:inset 0 0 0 1px var(--hair); }
 #drawer .homes button.on{ background:var(--ink); color:var(--paper); box-shadow:none; }
 :root[data-home="tree"] #star, :root[data-home="tree"] #drops{ display:none; }   /* the tree stands on bare paper */
+
+/* the fan beside the ball: gauge, board, heart (as in Shoreless) */
+.fan{ position:absolute; z-index:6; display:flex; gap:8px; pointer-events:none; }
+.fan button{ width:46px; height:46px; border-radius:50%; border:0; padding:0; position:relative; display:grid; place-items:center; color:var(--ink); cursor:pointer;
+  background:radial-gradient(120% 120% at 30% 20%, rgba(255,255,255,.75), rgba(246,242,235,.55) 60%, rgba(236,232,225,.5)); box-shadow:0 6px 18px rgba(60,40,30,.12), inset 0 0 0 .6px var(--hair);
+  -webkit-backdrop-filter:blur(10px); backdrop-filter:blur(10px); opacity:0; transform:translateX(24px) scale(.6); transition:opacity .22s, transform .32s cubic-bezier(.3,1.4,.5,1); }
+.fan button[hidden]{ display:none; }
+:root[data-side="moon"] .fan button{ background:radial-gradient(120% 120% at 30% 20%, rgba(235,198,178,.22), rgba(20,15,13,.55) 60%, rgba(12,10,9,.7)); }
+.fan button svg{ width:20px; height:20px; fill:none; stroke:currentColor; stroke-width:1.6; stroke-linecap:round; stroke-linejoin:round; }
+.fan button span{ position:absolute; top:100%; margin-top:4px; font:italic 11px/1 var(--serif); color:var(--soft); white-space:nowrap; }
+.fan.open{ pointer-events:auto; }
+.fan.open button{ opacity:1; transform:none; }
+.fan.open button:nth-child(2){ transition-delay:.04s; } .fan.open button:nth-child(1){ transition-delay:.08s; }
+
+/* the hold's sheets: board, heart, a folder — the same glass as the gauge */
+.hold{ position:fixed; inset:0; z-index:40; display:flex; align-items:flex-end; justify-content:center; background:rgba(34,30,28,.12); }
+.hold[hidden]{ display:none; }
+:root[data-side="moon"] .hold{ background:rgba(0,0,0,.4); }
+.hold .sheet{ width:min(100% - 24px, 460px); max-height:min(82vh, 760px); display:flex; flex-direction:column; margin-bottom:calc(env(safe-area-inset-bottom) + 12px); border-radius:26px; box-sizing:border-box;
+  background:linear-gradient(160deg, rgba(252,249,244,.94), rgba(242,236,228,.9)); box-shadow:0 18px 50px rgba(40,25,18,.22), inset 0 1px 0 rgba(255,255,255,.9); -webkit-backdrop-filter:blur(18px); backdrop-filter:blur(18px); }
+:root[data-side="moon"] .hold .sheet{ background:linear-gradient(160deg, rgba(42,32,28,.96), rgba(16,12,10,.94)); box-shadow:0 18px 50px rgba(0,0,0,.5), inset 0 1px 0 rgba(235,198,178,.08); }
+.hold .hh{ display:flex; align-items:baseline; justify-content:space-between; padding:18px 22px 10px; }
+.hold .hh b{ font:italic 400 22px/1.2 var(--serif); }
+.hold .hh small{ font-style:normal; font-size:12px; letter-spacing:.12em; color:var(--soft); margin-left:6px; }
+.hold .hh .x, .hold .bk{ border:0; background:none; color:var(--soft); font:italic 15px var(--serif); padding:0; cursor:pointer; }
+.hold .hb{ overflow-y:auto; -webkit-overflow-scrolling:touch; padding:0 18px 18px; }
+.hold .tabs{ display:flex; gap:22px; border-bottom:1px solid var(--hair); margin:0 4px 12px; }
+.hold .tabs button{ border:0; background:none; color:var(--soft); font:15px var(--serif); padding:0 0 9px; position:relative; letter-spacing:.04em; }
+.hold .tabs button i{ font-style:normal; font-size:11px; margin-left:4px; opacity:.7; }
+.hold .tabs button.on{ color:var(--ink); }
+.hold .tabs button.on::after{ content:""; position:absolute; left:10%; right:10%; bottom:-1px; height:2px; background:var(--accent); }
+.hold .tk{ padding:11px 4px 12px; border-bottom:1px solid var(--hair); cursor:pointer; }
+.hold .top{ display:flex; align-items:center; gap:7px; font-size:11.5px; color:var(--faint); flex-wrap:wrap; }
+.hold .id{ font-family:var(--mono); color:var(--soft); }
+.hold .pri{ font-family:var(--mono); font-size:10.5px; border-radius:5px; padding:1px 5px; border:1px solid var(--hair); }
+.hold .pri.p0{ background:var(--accent); color:#fff; border-color:var(--accent); }
+.hold .acts{ margin-left:auto; display:flex; gap:8px; }
+.hold .acts button, .hold .more.row button{ border:0; background:none; color:var(--soft); font:italic 12.5px var(--serif); padding:2px 0; cursor:pointer; }
+.hold .tt{ font-size:16px; line-height:1.4; margin:5px 0 2px; }
+.hold .who, .hold .files, .hold .tags{ font-size:12px; color:var(--soft); margin-top:3px; }
+.hold .files{ font-family:var(--mono); font-size:11px; word-break:break-all; }
+.hold .tags span{ border:1px solid var(--hair); border-radius:8px; padding:1px 7px; }
+.hold .proof{ display:block; font-size:13px; margin-top:4px; color:var(--accent); }
+.hold .more{ display:none; font-size:13.5px; line-height:1.55; color:var(--soft); white-space:pre-wrap; margin-top:6px; }
+.hold .more.row{ gap:14px; }
+.hold .tk.open .more{ display:block; } .hold .tk.open .more.row{ display:flex; }
+.hold .more.log{ font-size:12px; color:var(--faint); }
+.hold .none{ color:var(--faint); font-style:italic; text-align:center; padding:18px 0; margin:0; }
+.hold .add{ display:flex; flex-direction:column; gap:8px; margin-top:14px; }
+.hold .add input, .hold .add textarea, .hold .add select{ font:15px var(--serif); color:var(--ink); background:transparent; border:0; border-bottom:1px solid var(--hair); padding:7px 2px; border-radius:0; outline:none; resize:none; }
+.hold .add .row{ display:flex; gap:8px; align-items:center; }
+.hold .add select{ flex:1; min-width:0; font-size:13px; }
+.hold .add button{ border:0; border-radius:999px; padding:8px 16px; background:var(--ink); color:var(--paper); font:14px var(--serif); letter-spacing:.06em; }
+.hold .grp{ font-size:11.5px; letter-spacing:.18em; text-transform:uppercase; color:var(--faint); margin:14px 4px 6px; }
+.hold .file{ display:flex; justify-content:space-between; gap:10px; width:100%; border:0; border-bottom:1px solid var(--hair); background:none; color:var(--ink); text-align:left; padding:11px 4px; font:14.5px var(--serif); cursor:pointer; }
+.hold .file span{ flex:none; font-size:11px; color:var(--faint); font-family:var(--mono); }
+.hold .view{ white-space:pre-wrap; word-break:break-word; font:12px/1.55 var(--mono); margin:0; padding:4px 4px 30px; }
+.hold .view.md{ font:14.5px/1.75 var(--serif); }
+.hold .apps{ display:grid; grid-template-columns:repeat(3, 1fr); gap:18px 10px; padding:8px 4px 14px; }
+.hold .apps button{ border:0; background:none; color:var(--ink); display:flex; flex-direction:column; align-items:center; gap:6px; font:14px var(--serif); cursor:pointer; }
+.hold .apps i{ width:54px; height:54px; border-radius:16px; display:grid; place-items:center; font:italic 22px var(--serif); border:1px solid var(--hair); background:color-mix(in srgb, var(--paper) 70%, transparent); }
+.hold .apps small{ font-size:11px; color:var(--soft); letter-spacing:.08em; margin-top:-3px; }

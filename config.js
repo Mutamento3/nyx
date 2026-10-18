@@ -20,7 +20,8 @@ window.NYX = {
     { id: "chat", en: "Chat", zh: "聊天", art: "tokens" },
     { id: "listen", en: "Listen", zh: "一起听", href: "listen.html", art: "sampling" },
     { id: "attic", en: "Attic", zh: "杂物间", href: "attic.html", art: "clusters" },
-    { id: "room", en: "Room", zh: "房间", href: "room.html", art: "context" }
+    { id: "room", en: "Room", zh: "房间", href: "room.html", art: "context" },
+    { id: "hold", en: "Hold", zh: "底舱", art: "beam", apps: [{ id: "board", en: "Board", zh: "工程板" }, { id: "heart", en: "Heart", zh: "心脏" }] }   // a folder, like Shoreless's 底舱: the board and the heart
   ],
 
   // Room: an empty room to furnish with .glb files — docs/room-blender.md

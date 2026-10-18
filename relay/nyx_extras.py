@@ -6,6 +6,8 @@
   Usage   GET  /app/usage                (only if a status-line script saves Claude Code's JSON)
   Meter   GET  /app/meter · POST /app/meter   model, usage limits and context for the chat page's floating ball
   Model   GET  /app/model · POST /app/model   which model the companion should use
+  Board   GET  /app/board · POST /app/board · POST /app/board/<id>   the engineering board (relay/board.py for the AI)
+  Heart   GET  /app/heart · GET /app/heart/file?path=   read-only: the persona, the memory folder, the relay code
 
 Everything is optional: a room whose pieces aren't installed just answers 503.
 Mounted from app.py with `nyx_extras.register(app, globals())`.
@@ -16,6 +18,7 @@ licensed under the GNU AGPL v3 (see LICENSE and NOTICE in this folder).
 import asyncio
 import json
 import os
+import re
 import secrets
 import subprocess
 import time
@@ -51,6 +54,11 @@ CLAWD_PERSONA = os.environ.get("RELAY_CLAWD_PERSONA", (
 USAGE_FILE = Path(os.environ.get("RELAY_USAGE_FILE", str(Path.home() / ".claude" / "usage" / "latest.json")))
 
 # --- Model: the companion's model, picked from the floating ball ---
+# --- Heart: the companion's folder (persona + memory/) and this code, shown read-only ---
+COMPANION_DIR = Path(os.environ.get("RELAY_COMPANION_DIR", str(Path.home() / "companion")))
+NYX_DIR = Path(__file__).resolve().parent.parent
+HEART_REDACT = re.compile(r"((?:sk|ghp|gho|xox[bp]|AIza)[-_A-Za-z0-9]{12,})|((?:SECRET|TOKEN|PASSWORD|API_KEY)\s*=\s*)(\S+)")
+
 CLAUDE_MODELS = os.environ.get("RELAY_MODEL_OPTIONS",
                                "claude-opus-5-5:Opus 5.5,claude-sonnet-5-5:Sonnet 5.5,claude-haiku-5-5:Haiku 5.5")
 
@@ -332,3 +340,115 @@ def register(app, g):
             raise HTTPException(status_code=503, detail="no status-line data yet")
         return {k: {"used": rl[k].get("used_percentage"), "resets_at": rl[k].get("resets_at")}
                 for k in ("five_hour", "seven_day") if isinstance(rl.get(k), dict)}
+
+    # ---- Board: tickets you jot down; the AI claims one before it edits files and closes it after ----
+    board_file, board_lock = data_dir / "board.json", asyncio.Lock()
+    BOARD_ST = ("todo", "doing", "done")
+
+    def clip(x, n):
+        return str(x or "").strip()[:n]
+
+    def board_load():
+        try:
+            return json.loads(board_file.read_text(encoding="utf-8"))
+        except Exception:
+            return []
+
+    def board_save(items):
+        tmp = board_file.with_suffix(".tmp")
+        tmp.write_text(json.dumps(items, ensure_ascii=False, indent=1), encoding="utf-8"); tmp.replace(board_file)
+
+    @app.get("/app/board")
+    async def board_list(request: Request):
+        check_auth(request)
+        return {"items": board_load()}
+
+    @app.post("/app/board")
+    async def board_add(request: Request):
+        check_auth(request)
+        b = await request.json()
+        title = clip(b.get("title"), 120)
+        if not title:
+            raise HTTPException(status_code=400, detail="title required")
+        async with board_lock:
+            items = board_load()
+            no = max([it.get("no", 0) for it in items] + [0]) + 1
+            it = {"id": f"T{no:03d}", "no": no, "title": title, "body": clip(b.get("body"), 4000),
+                  "pri": b.get("pri") if b.get("pri") in ("p0", "p1", "p2") else "p1",
+                  "size": b.get("size") if b.get("size") in ("S", "M", "L") else "M",
+                  "status": "todo", "owner": "", "files": [], "by": clip(b.get("by") or human, 20),
+                  "wait": bool(b.get("wait")), "proof": clip(b.get("proof"), 400),
+                  "ts": now_iso(), "updated": now_iso(), "log": []}
+            items.append(it); board_save(items)
+        return it
+
+    @app.post("/app/board/{tid}")
+    async def board_edit(request: Request, tid: str):
+        check_auth(request)
+        b = await request.json()
+        async with board_lock:
+            items = board_load()
+            it = next((x for x in items if x.get("id") == tid), None)
+            if not it:
+                raise HTTPException(status_code=404, detail="no such ticket")
+            if b.get("delete"):
+                items.remove(it); board_save(items)
+                return {"ok": True}
+            who = clip(b.get("who") or human, 20)
+            for k, n in (("title", 120), ("body", 4000), ("owner", 20), ("proof", 400)):
+                if k in b:
+                    it[k] = clip(b[k], n)
+            if b.get("pri") in ("p0", "p1", "p2"):
+                it["pri"] = b["pri"]
+            if b.get("size") in ("S", "M", "L"):
+                it["size"] = b["size"]
+            if "wait" in b:
+                it["wait"] = bool(b["wait"])
+            if b.get("status") in BOARD_ST and b["status"] != it["status"]:
+                it["log"].append({"ts": now_iso(), "who": who, "text": f"{it['status']} → {b['status']}"})
+                it["status"] = b["status"]
+                if b["status"] != "doing" and "files" not in b:
+                    it["files"] = []
+            if isinstance(b.get("files"), list):
+                it["files"] = [clip(f, 200) for f in b["files"]][:20]
+            if b.get("note"):
+                it["log"].append({"ts": now_iso(), "who": who, "text": clip(b["note"], 1000)})
+            it["updated"] = now_iso()
+            board_save(items)
+        return it
+
+    # ---- Heart: read-only. The persona and memory the companion lives by, and the code it runs on; no keys ----
+    def heart_files():
+        groups = [
+            ("Persona", [COMPANION_DIR / "CLAUDE.md", COMPANION_DIR / "AGENTS.md"]),
+            ("Memory", sorted((COMPANION_DIR / "memory").glob("*.md"))),
+            ("Relay", sorted((NYX_DIR / "relay").glob("*.py")) + [NYX_DIR / "channel" / "server.ts"]
+             + sorted((NYX_DIR / "bridge").glob("*.py"))),
+        ]
+        out = []
+        for name, paths in groups:
+            files = []
+            for p in paths:
+                if not p.is_file() or re.search(r"env|secret|token|key|\.bak", p.name, re.I):
+                    continue
+                st = p.stat()
+                base = COMPANION_DIR if COMPANION_DIR in p.parents else NYX_DIR
+                files.append({"path": ("companion/" if base == COMPANION_DIR else "nyx/") + str(p.relative_to(base)),
+                              "size": st.st_size, "mtime": datetime.fromtimestamp(st.st_mtime, timezone.utc).isoformat()})
+            if files:
+                out.append({"name": name, "files": files})
+        return out
+
+    @app.get("/app/heart")
+    async def heart_list(request: Request):
+        check_auth(request)
+        return {"groups": heart_files()}
+
+    @app.get("/app/heart/file")
+    async def heart_file(request: Request, path: str):
+        check_auth(request)
+        if path not in {f["path"] for g in heart_files() for f in g["files"]}:
+            raise HTTPException(status_code=404, detail="not in the heart")
+        real = (COMPANION_DIR / path[len("companion/"):]) if path.startswith("companion/") else (NYX_DIR / path[len("nyx/"):])
+        text = real.read_text(encoding="utf-8", errors="replace")
+        return {"path": path, "text": HEART_REDACT.sub(lambda m: (m.group(2) + "***") if m.group(2) else "***", text)}

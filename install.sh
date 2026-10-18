@@ -117,8 +117,11 @@ $HOST {
 EOF
 
 say "5/7 Your companion's folder"
-mkdir -p "$HOME/companion"
-PERSONA_NOTE="You are $AI_NAME, talking with $ME_NAME through a private chat app on their phone. Write like a person texting: short messages, plain words. Replace this file with who you really are."
+mkdir -p "$HOME/companion/memory"
+PERSONA_NOTE="You are $AI_NAME, talking with $ME_NAME through a private chat app on their phone. Write like a person texting: short messages, plain words. Replace this file with who you really are.
+
+Things worth remembering go in ~/companion/memory/ as small .md files; $ME_NAME can read them (and this file) in the app's Heart.
+Before you edit the app's pages or relay, run: python3 $DIR/relay/board.py ls — then claim a ticket with the files you'll touch, and close it when done."
 
 if [ "$AI" = claude ]; then
   say "6/7 Claude Code + channel plugin"
