@@ -13,7 +13,7 @@ body.listen{ overflow:hidden; }
 
 .stage{ position:relative; z-index:1; height:330px; }
 .intro{ position:relative; z-index:2; padding:6px var(--pad) 0; }
-.intro h1{ margin:0; font-weight:300; font-style:italic; font-size:46px; letter-spacing:-.01em; line-height:1.05; }
+.intro h1{ margin:0; font-family:"Pinyon Script", var(--serif); font-weight:400; font-size:clamp(36px, 11vw, 46px); letter-spacing:0; line-height:1.08; }   /* the script Shoreless uses here */
 .intro p{ margin:12px 0 0; font-style:italic; font-size:14px; line-height:1.6; color:var(--soft); max-width:58%; }
 .deck{ position:absolute; z-index:1; right:-26%; top:70px; width:86%; }
 .deck svg, .np-deck svg{ display:block; width:100%; height:auto; overflow:visible; }

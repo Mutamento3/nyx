@@ -3,7 +3,7 @@
   --paper:#ECE8E1; --ink:#221E1C; --soft:#6B625C; --faint:#A39A92;
   --hair:rgba(34,30,28,.16); --river:rgba(34,30,28,.5);
   --me:#F7F2E8; --me-ink:#3A2A22; --drop:#221E1C; --accent:#D97757;
-  --serif:"Source Serif 4", Georgia, "Songti SC", "STSong", "Noto Serif SC", "Noto Serif CJK SC", "Source Han Serif SC", "PingFang SC", "Noto Sans CJK SC", "Microsoft YaHei", sans-serif;
+  --serif:"Source Serif 4", Georgia, "Noto Serif SC", "Songti SC", "STSong", "Noto Serif CJK SC", "Source Han Serif SC", "PingFang SC", "Noto Sans CJK SC", "Microsoft YaHei", sans-serif;
   --mono:ui-monospace, "SF Mono", Menlo, monospace;
   --pad:18px;
 }
