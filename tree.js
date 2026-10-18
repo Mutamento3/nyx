@@ -63,11 +63,12 @@
 
   window.NyxTree = function (host, apps, open, opt) {
     opt = opt || {};
-    host.innerHTML = '<div class="tree"><canvas></canvas><div class="tags"></div></div>';
-    var box = host.querySelector(".tree"), cv = box.querySelector("canvas"), ctx = cv.getContext("2d"), tags = box.querySelector(".tags");
+    host.innerHTML = '<div class="tree"><canvas class="water"></canvas><canvas class="ink"></canvas><div class="tags"></div></div>';
+    var box = host.querySelector(".tree"), cv = box.querySelector("canvas.ink"), wcv = box.querySelector("canvas.water"), ctx = cv.getContext("2d"), tags = box.querySelector(".tags");
     if (opt.photo) { box.style.setProperty("--photo", 'url("' + opt.photo + '")'); box.classList.add("photo"); }
     var still = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
     var G = {}, side = null, W = 0, H = 0, S = 1, OX = 0, OY = 0, dpr = 1, raf = 0, t0 = performance.now();
+    var water = null; try { water = window.NyxWater && NyxWater(wcv); } catch (e) {}
     var tilt = [0, 0], tiltT = [0, 0], burst = [], leaving = null, picked = [], labels = [];
 
     function build() {
@@ -102,6 +103,7 @@
       var r = (host.closest(".scroller") || host.parentElement).getBoundingClientRect(); dpr = Math.min(2, window.devicePixelRatio || 1);
       W = Math.max(280, r.width); H = Math.max(480, r.height);
       host.style.height = H + "px"; cv.width = W * dpr; cv.height = H * dpr; cv.style.width = W + "px"; cv.style.height = H + "px";
+      var wd = Math.min(1.5, dpr); wcv.width = W * wd; wcv.height = H * wd; wcv.style.width = W + "px"; wcv.style.height = H + "px";
       // fit: the highest tip stops a finger below the header; the tree's edge is drawn, not cut by the screen (Yan)
       var head = 92, room = H - head - 8, span = G.H - G.top;
       S = Math.min(W / G.W * 1.04, room / span); OX = 6; OY = H - G.H * S;
@@ -143,6 +145,7 @@
       var tt = (now - t0) / 1000;
       if ((document.documentElement.dataset.side === "moon" ? "moon" : "sun") !== side) { build(); size(); }
       tilt[0] += (tiltT[0] - tilt[0]) * .05; tilt[1] += (tiltT[1] - tilt[1]) * .05;
+      if (water) water.draw(still ? 30 : tt, side, tilt, [(OX + 86 * S) / W, .07]);   // rings start at the trunk
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, W, H);
       G.roots.forEach(function (b) { ribbon(b, tt); });
       G.draw.slice().sort(function (a, b) { return a.z - b.z; }).forEach(function (b) { ribbon(b, tt); });
