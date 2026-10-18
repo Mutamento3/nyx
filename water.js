@@ -42,7 +42,7 @@
     "  vec3 V = normalize(cam - vW);",
     "  float fr = .02 + .98 * pow(1. - max(dot(N, V), 0.), 5.);",
     "  vec3 R = reflect(-V, N); vec3 sky = mix(skyLo, skyHi, smoothstep(-.05, .6, R.y));",
-    "  float sp = pow(max(dot(R, sun), 0.), 500.) * 2.2 + pow(max(dot(R, sun), 0.), 30.) * .12;",
+    "  float sp = pow(max(dot(R, sun), 0.), 700.) * 1.1 + pow(max(dot(R, sun), 0.), 30.) * .12;",
     "  float sss = pow(max(vW.y + .1, 0.), 2.) * .35;",                          // light through the crests
     "  float rel = dot(N, normalize(vec3(-.4, .8, .45)));",   // the relief of the swell, lit from one side
     "  vec3 col = mix(deep * (.55 + .7 * rel) + sss * shallow, sky, fr) + glint * sp;",
@@ -57,6 +57,7 @@
     "  foam += (1. - smoothstep(0., .22, abs(e - .1))) * .8;",                     // the bright lip of the wave
     "  foam += smoothstep(.9, 1.05, fm) * smoothstep(.7, 1., vW.y / .35) * .35;",   // whitecaps on the crests
     "  col = mix(col, foamC, clamp(foam, 0., 1.));",
+    "  col += (h(floor(gl_FragCoord.xy)) - .5) * .07;",   // the same paper grain as the page, so the sea is printed on it (唯)
     "  float a = smoothstep(-.06, .12, e);",
     "  gl_FragColor = vec4(col * a, a); }"].join("\n");
 
@@ -76,12 +77,13 @@
       var lv = 0, lastSide = null, lastT = 0, w = 0, h = 0, ray = new T.Raycaster(), plane = new T.Plane(new T.Vector3(0, 1, 0), 0), hit = new T.Vector3();
       // the world z where the tide line sits for a given height on screen (0 bottom … 1 top)
       function zAt(f) { ray.setFromCamera(new T.Vector2(0, f * 2 - 1), cam); return ray.ray.intersectPlane(plane, hit) ? hit.z : -40; }
+      // the same paper and ink as Shoreless's 日月: warm grey-white and ink by day, black paper and rust-cream by night
       function palette(moon) {
-        if (moon) { U.deep.value.setRGB(.03, .032, .036); U.shallow.value.setRGB(.05, .05, .055); U.skyLo.value.setRGB(.14, .14, .15);
-          U.skyHi.value.setRGB(.02, .02, .025); U.glint.value.setRGB(.55, .55, .52); U.foamC.value.setRGB(.3, .3, .29);
+        if (moon) { U.deep.value.setRGB(.03, .025, .022); U.shallow.value.setRGB(.06, .048, .042); U.skyLo.value.setRGB(.16, .12, .1);
+          U.skyHi.value.setRGB(.035, .028, .025); U.glint.value.setRGB(.91, .79, .72); U.foamC.value.setRGB(.34, .26, .22);
           U.sun.value.set(-.15, .5, -1).normalize(); }
-        else { U.deep.value.setRGB(.40, .41, .42); U.shallow.value.setRGB(.83, .82, .80); U.skyLo.value.setRGB(.95, .94, .92);
-          U.skyHi.value.setRGB(.70, .71, .73); U.glint.value.setRGB(1, 1, .98); U.foamC.value.setRGB(.985, .98, .97);
+        else { U.deep.value.setRGB(.36, .33, .31); U.shallow.value.setRGB(.88, .86, .83); U.skyLo.value.setRGB(.93, .91, .88);
+          U.skyHi.value.setRGB(.66, .63, .6); U.glint.value.setRGB(1, .99, .97); U.foamC.value.setRGB(.925, .91, .88);
           U.sun.value.set(.1, .55, -1).normalize(); }
       }
       api.ready = true;
