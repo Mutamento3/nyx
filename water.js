@@ -20,9 +20,9 @@
     "  return vec3(d.x * q * cos(f), q * sin(f), d.y * q * cos(f)); }",
     "void main(){",
     "  vec3 p = (modelMatrix * vec4(position, 1.)).xyz, tg = vec3(1, 0, 0), bn = vec3(0, 0, 1), o = vec3(0);",
-    "  o += g(vec2(.3, 1.), .55, .16, 1.3, p, tg, bn);",
-    "  o += g(vec2(-.6, .8), 1.1, .12, 1.1, p, tg, bn);",
-    "  o += g(vec2(.9, .45), 2.3, .08, .9, p, tg, bn);",
+    "  o += g(vec2(.3, 1.), .3, .22, 1.2, p, tg, bn);",
+    "  o += g(vec2(-.6, .8), .6, .14, 1., p, tg, bn);",
+    "  o += g(vec2(.9, .45), 1.2, .07, .8, p, tg, bn);",
     "  p += o; vW = p; vN = normalize(cross(bn, tg));",
     "  gl_Position = projectionMatrix * viewMatrix * vec4(p, 1.); }"].join("\n");
 
@@ -36,8 +36,8 @@
     "vec3 tex(vec2 uv){ return texture2D(nm, uv).rbg * 2. - 1.; }",
     "void main(){",
     "  vec2 xz = vW.xz;",
-    "  vec3 r = tex(xz * .09 + vec2(time * .012, time * .02)) + tex(xz * .21 - vec2(time * .018, -time * .009)) * .6",
-    "         + tex(xz * .5 + vec2(-time * .03, time * .025)) * .3;",
+    "  vec3 r = tex(xz * .045 + vec2(time * .008, time * .013)) + tex(xz * .1 - vec2(time * .012, -time * .006)) * .55",
+    "         + tex(xz * .22 + vec2(-time * .02, time * .016)) * .25;",   // broad, slow ripples (唯: not so dense)
     "  vec3 N = normalize(vN * .9 + vec3(r.x, 0., r.z) * 1.1);",
     "  vec3 V = normalize(cam - vW);",
     "  float fr = .02 + .98 * pow(1. - max(dot(N, V), 0.), 5.);",
@@ -67,7 +67,7 @@
       var R; try { R = new T.WebGLRenderer({ canvas: cv, alpha: true, antialias: true, premultipliedAlpha: true }); } catch (e) { return; }
       R.setClearColor(0x000000, 0);
       var scene = new T.Scene(), cam = new T.PerspectiveCamera(38, 1, .1, 200);
-      cam.position.set(0, 13, 9); cam.lookAt(0, 0, -1.5);
+      cam.position.set(0, 17, 4); cam.lookAt(0, 0, -1);   // nearly overhead, so the far water doesn't bunch up
       var tx = new T.TextureLoader().load(NORMALS); tx.wrapS = tx.wrapT = T.RepeatWrapping;
       var U = { nm: { value: tx }, time: { value: 0 }, shore: { value: 6 }, cam: { value: cam.position },
         sun: { value: new T.Vector3() }, deep: { value: new T.Color() }, shallow: { value: new T.Color() },
@@ -91,9 +91,10 @@
       api.draw = function (tt, side, tilt) {
         if (cv.width !== w || cv.height !== h) { w = cv.width; h = cv.height; R.setSize(w, h, false); cam.aspect = w / h; cam.updateProjectionMatrix(); }
         if (side !== lastSide) { lastSide = side; lv = 0; palette(side === "moon"); cv.style.transform = side === "moon" ? "scaleY(-1)" : ""; }
-        var target = (side === "moon" ? .36 : .4) + Math.sin(tt * .25) * .01, dt = Math.min(.3, Math.max(0, tt - lastT)); lastT = tt;
+        var target = 1.12,   // the tide comes in until it fills the screen (唯)
+           dt = Math.min(.3, Math.max(0, tt - lastT)); lastT = tt;
         if (dt === 0) lv = target; else lv += (target - lv) * (1 - Math.exp(-dt * .8));   // the tide comes in over a few seconds
-        cam.position.x = tilt[0] * .8; cam.lookAt(tilt[0] * .3, 0, -1.5);
+        cam.position.x = tilt[0] * .8; cam.lookAt(tilt[0] * .3, 0, -1);
         U.time.value = tt; U.shore.value = zAt(lv);
         R.render(scene, cam);
       };
