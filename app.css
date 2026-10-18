@@ -61,7 +61,7 @@ button{ font:inherit; color:inherit; background:none; border:0; padding:0; curso
 .msg{ position:relative; display:flex; margin-top:14px; }
 .msg.cont{ margin-top:5px; }
 .msg .body{ max-width:min(76%, 520px); font-size:15.5px; line-height:1.66; overflow-wrap:anywhere; }
-@media (max-width:700px){ .msg{ margin-top:18px; } .msg .body{ max-width:min(63vw, 520px); font-size:13.5px; line-height:1.56; } .msg.ai .body{ line-height:1.7; } }   /* the same size as Shoreless on a phone (唯) */
+@media (max-width:700px){ .msg{ margin-top:18px; } .msg .body{ max-width:min(63vw, 520px); font-size:13.5px; line-height:1.56; } .msg.ai .body{ line-height:1.7; } }   /* a little smaller on a phone */
 .msg .t{ font-family:var(--mono); font-size:9.5px; color:var(--faint); margin-left:8px; white-space:nowrap; }
 
 .msg.ai{ padding-left:32px; }
@@ -283,7 +283,7 @@ button{ font:inherit; color:inherit; background:none; border:0; padding:0; curso
 #drawer .homes button.on{ background:var(--ink); color:var(--paper); box-shadow:none; }
 :root[data-home="tree"] #star, :root[data-home="tree"] #drops{ display:none; }   /* the tree stands on bare paper */
 
-/* the fan beside the ball: gauge, board, heart (as in Shoreless) */
+/* the fan beside the ball: gauge, board, heart */
 .fan{ position:absolute; z-index:6; display:flex; gap:8px; pointer-events:none; }
 .fan button{ width:46px; height:46px; border-radius:50%; border:0; padding:0; position:relative; display:grid; place-items:center; color:var(--ink); cursor:pointer;
   background:radial-gradient(120% 120% at 30% 20%, rgba(255,255,255,.75), rgba(246,242,235,.55) 60%, rgba(236,232,225,.5)); box-shadow:0 6px 18px rgba(60,40,30,.12), inset 0 0 0 .6px var(--hair);
@@ -364,7 +364,7 @@ button{ font:inherit; color:inherit; background:none; border:0; padding:0; curso
 .hold .memo a{ color:var(--accent); word-break:break-all; }
 .hold .memo code{ font-family:var(--mono); font-size:12px; background:var(--hair); padding:1px 5px; border-radius:5px; }
 .hold .memo .zh{ color:var(--soft); font-size:14px; border-top:1px solid var(--hair); padding-top:12px; }
-/* on the water the words go white with a dark halo, so they read over any wave (唯) */
+/* on the water the words go white with a dark halo, so they read over any wave */
 .tree .tag span{ color:#FBF7F2; opacity:1; text-shadow:0 0 2px rgba(0,0,0,.85), 0 0 6px rgba(0,0,0,.6), 0 0 14px rgba(0,0,0,.4); }
 .tree .tag small{ opacity:.92; }
 :root[data-home="tree"] .title{ color:#FBF7F2; text-shadow:0 0 2px rgba(0,0,0,.8), 0 0 8px rgba(0,0,0,.55), 0 0 16px rgba(0,0,0,.35); }

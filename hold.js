@@ -1,4 +1,4 @@
-/* Nyx — the hold: the engineering board and the heart, as sheets over any page (after Shoreless's 底舱).
+/* Nyx — the hold: the engineering board and the heart, as sheets over any page (the hold: 底舱).
    Board: jot down bugs and ideas; the AI claims a ticket before it edits files and closes it after (relay/board.py).
    Heart: read-only — the persona and memory your companion lives by, and the relay code it runs on. Keys are blanked.
    NyxHold(api, names) → { board(), heart(), folder(app, open) }. api(path, opt) is the chat page's relay call. */

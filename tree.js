@@ -11,7 +11,7 @@
 
   // the tree in a 390 × 844 frame (scaled to the screen), after Yan's tree.mjs
   function grow(night) {
-    var W = 390, H = 844, rnd = seeded(7), UPR = -Math.PI / 2 + .3, P = [];   // v1's bones: 唯 said the first one looked most like a tree
+    var W = 390, H = 844, rnd = seeded(7), UPR = -Math.PI / 2 + .3, P = [];   // the first version's bones: it looked most like a tree
     function branch(x, y, ang, len, w, z, tier, maxTier, parent) {
       var pts = [[x, y]], a = ang, cx = x, cy = y, n = 14;
       for (var i = 1; i <= n; i++) {
@@ -23,7 +23,7 @@
         cx += Math.cos(a) * len / n; cy += Math.sin(a) * len / n; pts.push([cx, cy]);
       }
       var me = { pts: pts, w0: w, w1: w * (tier === 0 ? .22 : .5), z: z, tier: tier, parent: parent, kids: [] };
-      // after Dora Lazarevic's Europe (唯): the trunk is solid ink, limbs taper fast, twigs are pen hairlines
+      // after Dora Lazarevic's Europe: the trunk is solid ink, limbs taper fast, twigs are pen hairlines
       if (tier === 1) me.w1 = 2; else if (tier >= 2) { me.w0 = 1.15; me.w1 = .7; }
       P.push(me); if (parent) parent.kids.push(me);
       if (tier >= maxTier) return [{ x: cx, y: cy, a: a, b: me }];
@@ -106,7 +106,7 @@
       var wd = Math.min(1.5, dpr); wcv.width = W * wd; wcv.height = H * wd; wcv.style.width = W + "px"; wcv.style.height = H + "px";
       // fit: the highest tip stops a finger below the header; the tree's edge is drawn, not cut by the screen (Yan)
       var head = 70, room = H - head - 8, span = G.H - G.top;
-      S = Math.min(W / G.W * 1.04, room / span) * 1.34; OX = -26; OY = H - G.H * S;   // a size up (唯), the crown may run past the header a little
+      S = Math.min(W / G.W * 1.04, room / span) * 1.34; OX = -26; OY = H - G.H * S;   // drawn large; the crown may run past the header a little
     }
     // a point on branch b, moved by tilt and wind according to its depth
     function at(b, p, k, n, tt) {

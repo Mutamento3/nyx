@@ -42,7 +42,7 @@
   function closeDrawer() { $("drawer").classList.remove("open"); $("drawer").setAttribute("aria-hidden", "true"); }
   $("menu").onclick = openDrawer; $("drawer").querySelector(".sh").onclick = closeDrawer;
   $("drawerTitle").textContent = C.title || "Nyx"; $("homeTitle").textContent = (C.title || "Nyx").toUpperCase();
-  // the drawer, as in Shoreless: a line icon on each row; a folder becomes a small clay heading with its rooms under it
+  // the drawer: a line icon on each row; a folder becomes a small clay heading with its rooms under it
   var IC = { chat: '<path d="M21 11.5a8.5 8.5 0 0 1-12.3 7.6L3 21l1.9-5.7A8.5 8.5 0 1 1 21 11.5Z"/>',
     listen: '<path d="M9 18V5.5l11-2V16"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="17.5" cy="16" r="2.5"/>',
     attic: '<path d="M3 10l9-6 9 6"/><path d="M5 9v11h14V9"/><path d="M9 20v-6h6v6"/><path d="M8 12h.01M16 12h.01"/>',
@@ -101,7 +101,7 @@
     stateLabel = label || (on ? "online" : "offline");
     if (!spinT) $("state").querySelector("em").textContent = stateLabel;
   }
-  // while it's answering: the Claude Code star turning in the header, and a new word every two seconds (as in Shoreless)
+  // while it's answering: the Claude Code star turning in the header, and a new word every two seconds
   var SPIN = ["\u00b7", "\u2722", "\u2736", "\u273b", "\u273d", "\u273b", "\u2736", "\u2722"];
   var VERBS = C.verbs || ["Pondering", "Noodling", "Percolating", "Mulling", "Brewing", "Musing", "Doodling", "Simmering", "Whisking", "Daydreaming", "Scheming", "Painting"];
   function spin(on) {
@@ -405,7 +405,7 @@
       else fan(!$("fan").classList.contains("open"));
     });
   })();
-  // tap the ball: three fan out to its left — the gauge, the board, the heart (as in Shoreless)
+  // tap the ball: three fan out to its left — the gauge, the board, the heart
   function fan(open) {
     var f = $("fan"), orb = $("orb");
     if (open) { f.style.right = (parseFloat(getComputedStyle(orb).right) + 58) + "px"; f.style.bottom = (parseFloat(getComputedStyle(orb).bottom) + 4) + "px"; }

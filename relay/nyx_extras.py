@@ -544,14 +544,15 @@ def register(app, g):
 
     async def claude_restart(resume=""):
         try:
-            line = next(l for l in COMPANION_UNIT.read_text().splitlines() if l.startswith("ExecStart="))
-            cmd = shlex.split(line[len("ExecStart="):])
+            unit = COMPANION_UNIT.read_text().splitlines()
+            cmd = shlex.split(next(l for l in unit if l.startswith("ExecStart="))[len("ExecStart="):])
         except Exception:
             raise HTTPException(status_code=503, detail="don't know how to start the window (" + str(COMPANION_UNIT) + ")")
+        unit_path = next((l[len("Environment=PATH="):] for l in unit if l.startswith("Environment=PATH=")), None)   # where claude and bun live
         await asyncio.to_thread(tmux, "kill-session", "-t", TMUX)
         ctx.update(nudged_sid="", nudged_at=None)
         await asyncio.sleep(1)
-        env = dict(os.environ, NYX_RESUME=resume) if resume else dict(os.environ)
+        env = dict(os.environ, **({"PATH": unit_path} if unit_path else {}), **({"NYX_RESUME": resume} if resume else {}))
         proc = await asyncio.to_thread(subprocess.run, cmd, capture_output=True, text=True, timeout=120, env=env)
         if proc.returncode != 0:
             raise HTTPException(status_code=500, detail="the window didn't start: " + (proc.stdout + proc.stderr)[-200:])

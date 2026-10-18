@@ -37,7 +37,7 @@
     "void main(){",
     "  vec2 xz = vW.xz;",
     "  vec3 r = tex(xz * .045 + vec2(time * .008, time * .013)) + tex(xz * .1 - vec2(time * .012, -time * .006)) * .55",
-    "         + tex(xz * .22 + vec2(-time * .02, time * .016)) * .25;",   // broad, slow ripples (唯: not so dense)
+    "         + tex(xz * .22 + vec2(-time * .02, time * .016)) * .25;",   // broad, slow ripples
     "  vec3 N = normalize(vN * .9 + vec3(r.x, 0., r.z) * 1.1);",
     "  vec3 V = normalize(cam - vW);",
     "  float fr = .02 + .98 * pow(1. - max(dot(N, V), 0.), 5.);",
@@ -57,7 +57,7 @@
     "  foam += (1. - smoothstep(0., .22, abs(e - .1))) * .8;",                     // the bright lip of the wave
     "  foam += smoothstep(.9, 1.05, fm) * smoothstep(.7, 1., vW.y / .35) * .35;",   // whitecaps on the crests
     "  col = mix(col, foamC, clamp(foam, 0., 1.));",
-    "  col += (h(floor(gl_FragCoord.xy)) - .5) * .07;",   // the same paper grain as the page, so the sea is printed on it (唯)
+    "  col += (h(floor(gl_FragCoord.xy)) - .5) * .07;",   // the same paper grain as the page, so the sea is printed on it
     "  float a = smoothstep(-.06, .12, e);",
     "  gl_FragColor = vec4(col * a, a); }"].join("\n");
 
@@ -77,7 +77,7 @@
       var lv = 0, lastSide = null, lastT = 0, w = 0, h = 0, ray = new T.Raycaster(), plane = new T.Plane(new T.Vector3(0, 1, 0), 0), hit = new T.Vector3();
       // the world z where the tide line sits for a given height on screen (0 bottom … 1 top)
       function zAt(f) { ray.setFromCamera(new T.Vector2(0, f * 2 - 1), cam); return ray.ray.intersectPlane(plane, hit) ? hit.z : -40; }
-      // the same paper and ink as Shoreless's 日月: warm grey-white and ink by day, black paper and rust-cream by night
+      // the same paper and ink as the pages: warm grey-white and ink by day, black paper and rust-cream by night
       function palette(moon) {
         if (moon) { U.deep.value.setRGB(.03, .025, .022); U.shallow.value.setRGB(.06, .048, .042); U.skyLo.value.setRGB(.16, .12, .1);
           U.skyHi.value.setRGB(.035, .028, .025); U.glint.value.setRGB(.91, .79, .72); U.foamC.value.setRGB(.34, .26, .22);
@@ -91,7 +91,7 @@
       api.draw = function (tt, side, tilt) {
         if (cv.width !== w || cv.height !== h) { w = cv.width; h = cv.height; R.setSize(w, h, false); cam.aspect = w / h; cam.updateProjectionMatrix(); }
         if (side !== lastSide) { lastSide = side; lv = 0; palette(side === "moon"); cv.style.transform = side === "moon" ? "scaleY(-1)" : ""; }
-        var target = 1.12,   // the tide comes in until it fills the screen (唯)
+        var target = 1.12,   // the tide comes in until it fills the screen
            dt = Math.min(.3, Math.max(0, tt - lastT)); lastT = tt;
         if (dt === 0) lv = target; else lv += (target - lv) * (1 - Math.exp(-dt * .8));   // the tide comes in over a few seconds
         cam.position.x = tilt[0] * .8; cam.lookAt(tilt[0] * .3, 0, -1);

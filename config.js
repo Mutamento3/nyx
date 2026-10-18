@@ -19,7 +19,7 @@ window.NYX = {
   apps: [
     { id: "chat", en: "Chat", zh: "聊天", art: "tokens" },
     { id: "listen", en: "Listen", zh: "一起听", href: "listen.html", art: "sampling" },
-    // a folder: one block on the home page, a small heading with its rooms in the drawer (as in Shoreless)
+    // a folder: one block on the home page, a small heading with its rooms in the drawer
     { id: "home", en: "Home", zh: "小家", art: "clusters", apps: [
       { id: "attic", en: "Attic", zh: "杂物间", href: "attic.html" },
       { id: "room", en: "Room", zh: "房间", href: "room.html" }] },

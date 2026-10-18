@@ -70,6 +70,8 @@ Optional, for the other rooms:
 | GET | `/app/usage` | `{ five_hour: { used, resets_at }, seven_day: {…} }` — Claude Code usage limits, see `relay/README.md` |
 | GET/POST | `/app/board`, `/app/board/<id>` | the engineering board in the Hold; the AI uses `relay/board.py` (`ls`, `claim`, `done`) |
 | GET | `/app/heart`, `/app/heart/file?path=` | read-only: `~/companion/CLAUDE.md` or `AGENTS.md`, `~/companion/memory/*.md`, the relay code; keys are blanked |
+| GET/POST | `/app/window`, `/app/window/{line,compact,new,switch}`, `/app/window/list` | the gauge's lower half: the context line (past it the AI saves to memory, then the window compacts), compact now, a new window, old windows. Claude Code through tmux; Codex through the bridge (`/app/window/cmd`) |
+| GET/POST | `/app/kitchen`, `/app/kitchen/{pantry,ask,recipe,photo,photo/comment,log,cooked}` | the Kitchen: pantry, recipes the AI writes, photos of what you made, a timeline of meals |
 
 `picks` is a list of who marked a picture; anything non-empty shows a small star (handy if your companion can mark things it likes).
 
