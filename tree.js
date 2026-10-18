@@ -165,8 +165,9 @@
         // label to the outer side, unless another entry sits where the words would go
         var left = t.sx > W * .55, blocked = function (l) { return picked.some(function (o) { return o !== t &&
           Math.abs(o.sy - t.sy) < 44 && (l ? o.sx < t.sx && o.sx > t.sx - 140 : o.sx > t.sx && o.sx < t.sx + 140); }); };
-        if (blocked(left) && !blocked(!left)) left = !left;
-        if (t.left == null || t.left !== left && blocked(t.left)) t.left = left;   // don't flicker as the wind moves things
+        var fitR = t.sx + 110 < W, fitL = t.sx - 110 > 0;   // never push the words off the screen, even to dodge a neighbour
+        if (!fitR) left = true; else if (!fitL) left = false; else if (blocked(left) && !blocked(!left)) left = !left;
+        if (t.left == null || !fitR || !fitL || t.left !== left && blocked(t.left)) t.left = left;   // don't flicker as the wind moves things
         labels[i].classList.toggle("l", t.left);
         labels[i].style.transform = "translate(" + t.sx.toFixed(1) + "px," + t.sy.toFixed(1) + "px)";
       });

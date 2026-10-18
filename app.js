@@ -53,7 +53,7 @@
     heart: '<path d="M12 20s-7.5-4.4-7.5-10A4.3 4.3 0 0 1 12 7.4 4.3 4.3 0 0 1 19.5 10c0 5.6-7.5 10-7.5 10Z"/><path d="M7 12h2.5l1.2-2.2 2 4.4 1.3-2.2H17"/>',
     kitchen: '<path d="M4 11h16"/><path d="M5 11a7 7 0 0 0 14 0"/><path d="M9 6.5c0-1 1-1.5 1-2.5M13 6.5c0-1 1-1.5 1-2.5"/><path d="M12 18v2.5M8.5 20.5h7"/>',
     link: '<path d="M14 5h5v5"/><path d="M19 5l-8 8"/><path d="M17 14v5H5V7h5"/>' };
-  function icon(a) { var d = IC[a.icon || a.id] || IC.link; return '<svg viewBox="0 0 24 24" aria-hidden="true">' + d + "</svg>"; }
+  function icon(a) { var d = a.svg || IC[a.icon || a.id] || IC.link; return '<svg viewBox="0 0 24 24" aria-hidden="true">' + d + "</svg>"; }
   var rows = [], row = function (a) { rows.push(a); return '<button type="button" class="ctr" data-r="' + (rows.length - 1) + '">' + icon(a) + "<span>" + esc(a.en) + (a.zh ? "<small>" + esc(a.zh) + "</small>" : "") + "</span></button>"; };
   $("drawerList").innerHTML = APPS.map(function (a) {
     return a.apps ? '<div class="gp">' + esc(a.en) + (a.zh ? "<small>" + esc(a.zh) + "</small>" : "") + "</div>" + a.apps.map(row).join("") : row(a);
