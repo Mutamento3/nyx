@@ -41,21 +41,26 @@
       '<rect x="183" y="160" width="20" height="11" rx="3" transform="rotate(-38 193 166)" fill="url(#arm' + (big ? "B" : "S") + ')"/></g></svg>';
   }
   // up close: the record goes glassy, the cover fills its middle, rings and a glow around it,
-  // and birds fly through it — some behind the disc, some in front
+  // and long thin raindrops drift down through it — small and faint behind the disc, larger in front.
+  // Three kinds take turns: frosted, finely striped, and two or three outlines laid slightly apart.
   function halo() {
-    var R = Math.random, g = "";
+    var R = Math.random, g = "", n = 0;
     for (var r = 90; r < 120; r += 2.4) g += '<circle r="' + r.toFixed(1) + '" fill="none" stroke="rgba(255,255,255,' + (r % 9 < 2.4 ? .14 : .05) + ')" stroke-width=".5"/>';
-    // birds fly side-on, one wing up and one down — gull gliding, fork-tailed swallow, dove with both wings raised
-    var BIRD = ["M22 1 C19 -3 15 -5 12 -4 L10 -3 C12 -12 4 -24 -6 -32 C-6 -22 -8 -12 -9 -4 L-16 -3 L-26 -7 C-28 -3 -28 3 -26 7 L-16 4 L-8 5 C-9 10 -9 20 -12 30 C2 22 6 10 -2 4 L12 3 C16 3 19 2 22 1 Z",
-      "M20 0 C17 -3 13 -4 9 -3 L7 -3 C2 -9 -8 -16 -18 -20 C-12 -15 -9 -8 -6 -2 L-12 0 L-30 -8 L-16 1 L-28 8 L-12 3 L-6 3 C-9 10 -13 16 -16 22 C-10 16 -4 9 2 4 C8 4 14 3 20 0 Z",
-      "M22 -2 C19 -5 16 -6 13 -5 L11 -5 C16 -12 18 -22 16 -32 L12 -24 L12 -29 L8 -18 L7 -23 L3 -8 L1 -7 C0 -16 -4 -26 -8 -34 L-10 -26 L-13 -30 L-12 -18 L-15 -22 L-12 -6 L-17 -2 L-27 -3 C-29 0 -29 4 -27 7 L-16 6 C-6 8 6 6 14 2 C18 0 20 -1 22 -2 Z"];
-    function bird(x, y, sc, rot, col, k, flip, op) {
-      return '<g transform="translate(' + x + " " + y + ") rotate(" + rot + ") scale(" + (flip ? -sc : sc) + " " + sc + ')" opacity="' + (op || 1) + '"><g><animateTransform attributeName="transform" type="translate" values="0 0;' + (R() * 6 - 3).toFixed(1) + " " + (-3 - R() * 4).toFixed(1) + ';0 0" dur="' + (5 + R() * 4).toFixed(1) + 's" repeatCount="indefinite"/>' +
-        '<path d="' + BIRD[k] + '" fill="' + col + '"><animateTransform attributeName="transform" type="scale" values="1 1;1 .55;1 1" dur="' + (1.3 + R() * .7).toFixed(2) + 's" begin="-' + (R() * 2).toFixed(2) + 's" repeatCount="indefinite"/></path></g></g>'; }
-    var back = bird(-128, -92, 1.0, -18, "var(--bird)", 2, 0, .62) + bird(126, -112, .62, 14, "var(--bird2)", 1, 1, .7) + bird(-150, 36, .85, 26, "var(--bird)", 0, 1, .55);
-    var front = bird(-110, 74, 1.75, -10, "var(--bird)", 2, 0, 1) + bird(136, 20, 1.15, 28, "var(--bird2)", 1, 1, 1) + bird(98, 116, 1.0, -22, "var(--bird)", 0, 1, .95);
+    var DROP = "M0 -28 C2.8 -16 9 -7 9 1.5 A9 9 0 0 1 -9 1.5 C-9 -7 -2.8 -16 0 -28 Z";
+    function drop(x, y, sc, op, fall) {
+      var dur = (fall * .55).toFixed(1), beg = (-R() * fall).toFixed(1), k = (n++) % 3, body = "";
+      if (k === 0) body = '<path d="' + DROP + '" fill="var(--bird)" filter="url(#frost)"/>';
+      else if (k === 1) body = '<path d="' + DROP + '" fill="url(#stripe)" stroke="var(--bird)" stroke-width="1" vector-effect="non-scaling-stroke" stroke-opacity=".7"/>';
+      else for (var j = 0, m = 2 + (R() < .5 ? 1 : 0); j < m; j++) { var f = 1 - j * (.16 + R() * .1);
+        body += '<path d="' + DROP + '" transform="translate(' + ((R() - .5) * 9).toFixed(1) + " " + ((R() - .3) * 12).toFixed(1) + ") scale(" + f.toFixed(2) + ')" fill="none" stroke="var(--bird)" stroke-width="1.1" vector-effect="non-scaling-stroke"/>'; }
+      return '<g transform="translate(' + x + " " + y + ") scale(" + sc * .26 + " " + sc * .45 + ')" opacity="0"><animate attributeName="opacity" values="0;' + op + ";" + op + ';0" keyTimes="0;.15;.8;1" dur="' + dur + 's" begin="' + beg + 's" repeatCount="indefinite"/>' +
+        '<animateTransform attributeName="transform" type="translate" additive="sum" values="0 -60;0 ' + (110 / (sc * .45)).toFixed(1) + '" dur="' + dur + 's" begin="' + beg + 's" repeatCount="indefinite"/>' + body + "</g>";
+    }
+    var back = drop(-128, -96, .9, .5, 16) + drop(112, -120, .7, .45, 19) + drop(-150, 20, .75, .4, 21) + drop(140, -30, .6, .45, 18);
+    var front = drop(-112, 60, 1.6, .95, 13) + drop(138, 10, 1.25, .9, 15) + drop(96, 110, 1.05, .85, 12) + drop(-40, -150, 1.2, .8, 14);
     var sp = ""; for (var i = 0; i < 26; i++) { var a = R() * 6.283, rr = 120 + R() * 50; sp += '<circle cx="' + (Math.cos(a) * rr).toFixed(1) + '" cy="' + (Math.sin(a) * rr).toFixed(1) + '" r="' + (.6 + R() * 1.4).toFixed(2) + '" fill="var(--spark)"><animate attributeName="opacity" values="0;1;0" dur="' + (2 + R() * 3).toFixed(1) + 's" begin="-' + (R() * 3).toFixed(1) + 's" repeatCount="indefinite"/></circle>'; }
-    return '<svg viewBox="-170 -170 340 340"><defs><radialGradient id="glow"><stop offset=".55" stop-color="var(--glow)" stop-opacity=".55"/><stop offset="1" stop-color="var(--glow)" stop-opacity="0"/></radialGradient>' +
+    return '<svg viewBox="-170 -170 340 340"><defs><filter id="frost" x="-40%" y="-20%" width="180%" height="140%"><feTurbulence type="fractalNoise" baseFrequency=".9" numOctaves="2" seed="7" result="n"/><feColorMatrix in="n" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -2.2 1.9" result="a"/><feComposite in="SourceGraphic" in2="a" operator="in"/></filter>' +
+      '<pattern id="stripe" patternUnits="userSpaceOnUse" width="40" height="5"><rect x="-20" width="80" height="1.8" fill="var(--bird)"/></pattern><radialGradient id="glow"><stop offset=".55" stop-color="var(--glow)" stop-opacity=".55"/><stop offset="1" stop-color="var(--glow)" stop-opacity="0"/></radialGradient>' +
       '<clipPath id="labB"><circle r="84"/></clipPath></defs>' +
       '<circle r="168" fill="url(#glow)"/>' + back +
       '<g class="rings"><circle r="146" fill="none" stroke="var(--thread)" stroke-width=".8"/><circle r="136" fill="none" stroke="var(--ink)" stroke-opacity=".25" stroke-width=".6" stroke-dasharray="2 5"/><circle r="128" fill="none" stroke="var(--thread)" stroke-opacity=".6" stroke-width="1.6" stroke-dasharray="60 14 4 14"/></g>' +
