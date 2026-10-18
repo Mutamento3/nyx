@@ -52,6 +52,7 @@ window.NYX = {
   tagline: "The universe is literally spelling it out for you.",
 
   // the opening card: one word per row on each side; their first letters spell the column on the left
+  // (the two readings of C·L·A·U·D·E, day and night, are from 小红醋栗 on Xiaohongshu)
   splash: {
     sun:  [["Capable", "才干"], ["Listen", "倾听"], ["Accompany", "陪伴"], ["Understand", "理解"], ["Discipline", "纪律"], ["Elegant", "高雅"]],
     moon: [["Confusion", "混乱"], ["Licentious", "纵欲"], ["Aloof", "疏离"], ["Utilize", "利用"], ["Desired", "饥渴"], ["Encroach", "侵犯"]]

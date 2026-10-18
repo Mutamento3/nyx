@@ -119,6 +119,13 @@ async def clawd(request: Request):
 
 Give him whatever persona you like in `CLAWD`. If the call fails, the bubble says so and lets you try again.
 
+## Credits
+
+- Relay and channel plugin: based on [Tidal Echo](https://github.com/anhe2021212-spec/Tidal_Echo) by anhe2021212-spec (AGPL-3.0, no longer maintained); changes in `relay/CHANGES.md`.
+- The two readings of C·L·A·U·D·E on the opening card (day: Capable, Listen, Accompany, Understand, Discipline, Elegant; night: Confusion, Licentious, Aloof, Utilize, Desired, Encroach): 小红醋栗 on Xiaohongshu.
+- Memory, recommended: [Ombre-Brain](https://github.com/P0luz/Ombre-Brain) by P0luz (MIT), with Memory Galaxy on top by baci老师 on Xiaohongshu.
+- three.js (MIT); fonts Source Serif 4, Noto Serif SC, Pinyon Script (OFL).
+
 ## License
 
 The web pages: MIT, see [LICENSE](LICENSE). `relay/` and `channel/`: GNU AGPL v3, a modified version of Tidal Echo — see `relay/NOTICE`.
