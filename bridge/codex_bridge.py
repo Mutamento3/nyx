@@ -206,7 +206,28 @@ class Bridge:
         self.save_state(threadId=self.thread)
         log("new thread", self.thread)
 
+    # what it's doing right now, for the line under its name on the chat page (POST /app/busy)
+    TOOLS = {"commandExecution": "running a command", "fileChange": "editing a file", "mcpToolCall": "using a tool",
+             "dynamicToolCall": "using a tool", "webSearch": "searching the web", "imageView": "looking at a picture",
+             "imageGeneration": "drawing", "contextCompaction": "compacting", "agentMessage": "writing to you"}
+
+    async def busy(self, **b):
+        if self.nudging and b.get("state") == "busy":
+            return
+        try:
+            await self.http.post(f"{RELAY}/app/busy", headers=AUTH, json=b)
+        except Exception:
+            pass
+
     async def on_note(self, method, p):
+        if method == "item/started":
+            it = p.get("item") or {}
+            if it.get("type") in self.TOOLS:
+                cmd = it.get("command")
+                detail = (" ".join(cmd) if isinstance(cmd, list) else cmd) or it.get("query") or it.get("path") or ""
+                await self.busy(state="busy", tool=self.TOOLS[it["type"]], detail=str(detail)[:60])
+            elif it.get("type") == "reasoning":
+                await self.busy(state="busy", tool=None)
         if method == "item/agentMessage/delta":
             await self.out({"type": "reply_delta", "stream_id": p["itemId"], "text": p["delta"]})
         elif method == "item/reasoning/summaryTextDelta" and THINKING and not self.nudging:
@@ -221,6 +242,7 @@ class Bridge:
             elif it.get("type") == "reasoning" and THINKING and not self.nudging:
                 await self.out({"type": "thinking_delta", "stream_id": it["id"] + ":t", "text": "", "done": True})
         elif method == "turn/completed":
+            await self.busy(state="idle")
             turn = p.get("turn") or {}
             if turn.get("status") == "failed":
                 err = (turn.get("error") or {}).get("message") or "Codex couldn't answer this time."
@@ -278,6 +300,7 @@ class Bridge:
             params["model"] = self.model
         if EFFORT:
             params["effort"] = EFFORT
+        await self.busy(state="busy", tool=None)
         try:
             await self.codex.call("turn/start", params)
             await asyncio.wait_for(self.turn_done.wait(), timeout=900)
@@ -286,6 +309,7 @@ class Bridge:
             if not nudge:
                 await self.out({"type": "reply", "text": f"（the bridge hit a problem: {str(e)[:200]}）"})
         finally:
+            await self.busy(state="idle")
             self.nudging = False
             self.last_activity = time.time()
             await self.report()

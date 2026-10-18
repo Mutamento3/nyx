@@ -95,25 +95,42 @@
       return r.json();
     });
   }
-  var stateLabel = "offline", spinT = 0;
+  var stateLabel = "offline", spinT = 0, typingOn = false, busy = null;
   function setState(on, label) {
     $("state").classList.toggle("on", !!on);
     stateLabel = label || (on ? "online" : "offline");
-    if (!spinT) $("state").querySelector("em").textContent = stateLabel;
+    paintState();
   }
-  // while it's answering: the Claude Code star turning in the header, and a new word every two seconds
+  // the line under its name: online / offline; while it's working, the Claude Code star turning and either what it's
+  // doing (running a command · 12s) or a new word every two seconds; stuck on a question → say so (GET /app/busy)
   var SPIN = ["\u00b7", "\u2722", "\u2736", "\u273b", "\u273d", "\u273b", "\u2736", "\u2722"];
   var VERBS = C.verbs || ["Pondering", "Noodling", "Percolating", "Mulling", "Brewing", "Musing", "Doodling", "Simmering", "Whisking", "Daydreaming", "Scheming", "Painting"];
-  function spin(on) {
-    var em = $("state").querySelector("em");
-    if (on && !spinT) {
+  function secsText(n) { n = n || 0; return n >= 3600 ? Math.floor(n / 3600) + "h " + Math.floor(n % 3600 / 60) + "m" : n >= 60 ? Math.floor(n / 60) + "m " + (n % 60) + "s" : n + "s"; }
+  function paintState() {
+    var em = $("state").querySelector("em"), working = typingOn || (busy && busy.state === "busy");
+    $("state").title = busy && busy.state === "busy" ? [busy.tool, busy.detail, busy.secs ? "this turn " + secsText(busy.secs) : ""].filter(Boolean).join(" \u00b7 ") : "";
+    if (working && !spinT) {
       var pick = function (p) { var v; do { v = VERBS[Math.floor(Math.random() * VERBS.length)]; } while (v === p && VERBS.length > 1); return v; };
-      var verb = pick(), i = 0, n = 0;
-      em.innerHTML = '<b class="spin">\u00b7</b><span>' + verb + "\u2026</span>";
+      var verb = pick(), i = 0, n = 0, t0 = Date.now();
+      em.innerHTML = '<b class="spin">\u00b7</b><span></span>';
       var sp = em.querySelector(".spin"), vb = em.querySelector("span");
-      spinT = setInterval(function () { i = (i + 1) % SPIN.length; sp.textContent = SPIN[i]; if (++n % 17 === 0) { verb = pick(verb); vb.textContent = verb + "\u2026"; } }, 120);
-    } else if (!on && spinT) { clearInterval(spinT); spinT = 0; em.textContent = stateLabel; }
+      var word = function () { vb.textContent = busy && busy.state === "busy" && busy.tool ? busy.tool + " \u00b7 " + secsText((busy.tool_secs || 0) + Math.round((Date.now() - (busy.at || Date.now())) / 1000)) : verb + "\u2026"; };
+      word();
+      spinT = setInterval(function () { i = (i + 1) % SPIN.length; sp.textContent = SPIN[i]; if (++n % 17 === 0) verb = pick(verb); if (n % 8 === 0) word(); }, 120);
+    } else if (!working) {
+      if (spinT) { clearInterval(spinT); spinT = 0; }
+      em.textContent = busy && busy.state === "waiting" ? "waiting for a yes at the terminal" : busy && busy.state === "offline" ? "the window isn't open" : stateLabel;
+    }
   }
+  function spin(on) { typingOn = on; paintState(); }
+  var busyT = 0;
+  function pollBusy() {
+    clearTimeout(busyT);
+    if (!key || document.hidden || $("room").hidden) { busyT = setTimeout(pollBusy, 5000); return; }
+    api("/app/busy").then(function (d) { d.at = Date.now(); busy = d; paintState(); }).catch(function () { busy = null; })
+      .then(function () { busyT = setTimeout(pollBusy, busy && busy.state === "busy" ? 2500 : 5000); });
+  }
+  document.addEventListener("visibilitychange", function () { if (!document.hidden) pollBusy(); });
 
   var streamCtl = null, retry = 0, watchdog = 0;
   function openStream() {
@@ -427,6 +444,7 @@
       log.innerHTML = ""; byId.clear(); lastId = 0;
       (d.messages || []).forEach(put); openStream(); loadMeter();
       if (!hold && window.NyxHold) hold = NyxHold(api, { me: ME });
+      pollBusy();
       if (!home) makeHome();
       show(location.hash === "#chat" ? "room" : "home");
     });

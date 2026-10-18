@@ -8,6 +8,8 @@
   Model   GET  /app/model · POST /app/model   which model the companion should use
   Board   GET  /app/board · POST /app/board · POST /app/board/<id>   the engineering board (relay/board.py for the AI)
   Heart   GET  /app/heart · GET /app/heart/file?path=   read-only: the persona, the memory folder, the relay code
+  Busy    GET  /app/busy · POST /app/busy   what the companion is doing right now: thinking, which tool for how long,
+          or waiting for someone to say yes at the terminal (Claude Code: read off tmux; Codex: the bridge reports it)
   Kitchen GET  /app/kitchen · POST /app/kitchen/{pantry,ask,recipe,photo,photo/comment,log,cooked}
           your pots, seasonings and fridge; recipes your companion writes; what you ate, day by day
   Window  GET  /app/window · POST /app/window/{line,compact,new,switch} · GET /app/window/list
@@ -705,6 +707,116 @@ def register(app, g):
                 pass
 
     g.setdefault("NYX_STARTUP", []).append(line_watch)
+
+
+    # ---- Busy: what it's doing right now, for the line under its name in the chat ----
+    TOOL_NAMES = {"Bash": "running a command", "Read": "reading a file", "Edit": "editing a file", "Write": "writing a file",
+                  "WebFetch": "reading a web page", "WebSearch": "searching the web", "Agent": "sent a helper",
+                  "Skill": "reading instructions", "ToolSearch": "looking for a tool", "Monitor": "watching a job"}
+    SPIN_RE = re.compile(r"^\s*\S\s+([^\s(]+\u2026)\s*\(([^)]*)\)")
+    bridge_busy = {"state": "idle", "ts": 0}
+
+    def secs(t):
+        return sum(int(v) * {"h": 3600, "m": 60, "s": 1}[u] for v, u in re.findall(r"(\d+)\s*([hms])", t or ""))
+
+    def current_tool():
+        """The last tool call in the transcript that hasn't had its result yet."""
+        m = session_meta()
+        f = CLAUDE_PROJECT / f"{m.get('sessionId')}.jsonl" if m else None
+        try:
+            with f.open("rb") as fh:
+                fh.seek(max(0, f.stat().st_size - 400_000))
+                lines = fh.read().decode("utf-8", "ignore").splitlines()
+        except Exception:
+            return None
+        done = set()
+        for line in reversed(lines):
+            if '"tool_use' not in line and '"tool_result' not in line:
+                continue
+            try:
+                d = json.loads(line); content = d["message"]["content"]
+            except Exception:
+                continue
+            if not isinstance(content, list):
+                continue
+            for c in reversed(content):
+                if c.get("type") == "tool_result":
+                    done.add(c.get("tool_use_id"))
+                elif c.get("type") == "tool_use":
+                    if c.get("id") in done:
+                        return None
+                    name, inp = c.get("name", ""), c.get("input") or {}
+                    if name in ("mcp__companion__reply", "mcp__companion__react"):
+                        label = "writing to you"
+                    elif name.startswith("mcp__"):
+                        label = "using " + name.split("__")[-1]
+                    else:
+                        label = TOOL_NAMES.get(name, "using " + name)
+                    detail = inp.get("description") or inp.get("file_path") or inp.get("url") or inp.get("query") or ""
+                    if isinstance(detail, str) and "/" in detail and len(detail) > 40:
+                        detail = "\u2026/" + detail.rsplit("/", 1)[-1]
+                    try:
+                        since = datetime.fromisoformat(d.get("timestamp", "").replace("Z", "+00:00")).timestamp()
+                    except Exception:
+                        since = None
+                    return {"tool": label, "detail": str(detail)[:60], "since": since}
+        return None
+
+    def claude_busy():
+        pane = tmux("capture-pane", "-pt", TMUX)
+        if pane.returncode != 0:
+            return {"state": "offline"}
+        lines = [l for l in pane.stdout.rstrip().splitlines() if l.strip()]
+        tail = "\n".join(lines[-15:])
+        if any(s in tail for s in PROMPT_MARKS):
+            return {"state": "waiting"}
+        if "esc to interrupt" not in tail:
+            return {"state": "idle"}
+        out = {"state": "busy"}
+        for l in reversed(lines[-20:]):
+            m = SPIN_RE.match(l)
+            if m:
+                out.update(verb=m.group(1), secs=secs(m.group(2).split("\u00b7")[0])); break
+        t = current_tool()
+        if t:
+            out.update(tool=t["tool"], detail=t["detail"])
+            if t["since"]:
+                out["tool_secs"] = max(0, int(time.time() - t["since"]))
+        return out
+
+    @app.get("/app/busy")
+    async def busy_get(request: Request):
+        check_auth(request)
+        if backend() == "codex":
+            b = dict(bridge_busy)
+            if b.get("state") == "busy" and time.time() - b.get("ts", 0) > 900:
+                b = {"state": "idle"}
+            now = time.time()
+            if b.get("turn_since"):
+                b["secs"] = int(now - b["turn_since"])
+            if b.get("tool_since"):
+                b["tool_secs"] = int(now - b["tool_since"])
+            return b
+        return await asyncio.to_thread(claude_busy)
+
+    @app.post("/app/busy")
+    async def busy_post(request: Request):
+        """The Codex bridge says what it's doing: {state: busy|idle, tool?, detail?}."""
+        check_auth(request)
+        b = await request.json(); now = time.time()
+        st = b.get("state") if b.get("state") in ("busy", "idle") else "idle"
+        if st == "idle":
+            bridge_busy.clear(); bridge_busy.update(state="idle", ts=now)
+        else:
+            if bridge_busy.get("state") != "busy":
+                bridge_busy.clear(); bridge_busy.update(state="busy", turn_since=now)
+            bridge_busy["ts"] = now
+            if b.get("tool"):
+                bridge_busy.update(tool=clip(b["tool"], 40), detail=clip(b.get("detail"), 60), tool_since=now)
+            elif "tool" in b:
+                for k in ("tool", "detail", "tool_since"):
+                    bridge_busy.pop(k, None)
+        return {"ok": True}
 
 
     # ---- Kitchen: the pantry, recipes the companion writes, photos of what got made, a timeline of meals ----
