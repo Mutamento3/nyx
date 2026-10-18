@@ -32,7 +32,7 @@
     return '<svg viewBox="0 0 270 250"><defs><clipPath id="lab' + (big ? "B" : "S") + '"><circle r="38"/></clipPath>' +
       '<linearGradient id="arm' + (big ? "B" : "S") + '" x1="0" x2="1"><stop offset="0" stop-color="var(--arm-hi)"/><stop offset="1" stop-color="var(--arm-lo)"/></linearGradient></defs>' +
       '<g transform="translate(122 128)"><circle r="112" fill="var(--rec)"/><g class="spin">' + g +
-      '<circle r="40" fill="var(--accent)"/><image class="lab" href="" x="-38" y="-38" width="76" height="76" preserveAspectRatio="xMidYMid slice" clip-path="url(#lab' + (big ? "B" : "S") + ')"/>' +
+      '<circle r="40" fill="var(--lab)"/><image class="lab" href="" x="-38" y="-38" width="76" height="76" preserveAspectRatio="xMidYMid slice" clip-path="url(#lab' + (big ? "B" : "S") + ')"/>' +
       '<path d="M-30 -24 A38 38 0 0 1 -10 -36" stroke="rgba(255,255,255,.25)" stroke-width="1.2" fill="none"/></g>' +
       '<path d="M-96 -48 A108 108 0 0 1 -40 -100" stroke="rgba(255,255,255,.10)" stroke-width="14" fill="none"/><path d="M96 52 A108 108 0 0 1 44 98" stroke="rgba(255,255,255,.06)" stroke-width="10" fill="none"/>' +
       '<circle r="3.2" fill="var(--paper)"/></g>' +

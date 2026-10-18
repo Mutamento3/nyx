@@ -1,7 +1,12 @@
 /* Nyx — Listen. Same paper as the chat; a record, a thread, a glass card. */
-:root{ --rec:#171413; --arm-hi:#E9E4DE; --arm-lo:#A69D95; --thread:rgba(164,73,42,.75); --glass:rgba(247,242,232,.78); --glass-line:rgba(255,255,255,.75); --np-veil:rgba(236,232,225,.74); --bird:#221E1C; --bird2:#A4492A; --glow:#E8B9A2; --spark:#FFFFFF; }
-:root[data-side="moon"]{ --rec:#050404; --arm-hi:#8C7B72; --arm-lo:#3B312C; --thread:rgba(201,96,58,.7); --glass:rgba(30,23,20,.78); --glass-line:rgba(235,198,178,.14); --np-veil:rgba(12,10,9,.78); --bird:#E8C9B8; --bird2:#C9603A; --glow:#8A2E18; --spark:#F4D3C2; }
+:root{ --rec:#171413; --arm-hi:#E9E4DE; --arm-lo:#A69D95; --thread:rgba(164,73,42,.75); --glass:rgba(247,242,232,.78); --glass-line:rgba(255,255,255,.75); --np-veil:rgba(236,232,225,.74); --bird:#221E1C; --bird2:#A4492A; --glow:#E8B9A2; --spark:#FFFFFF; --lab:#BE7C5A;
+  /* as in Shoreless's 日月: her photo of a red sun in the haze, pressed to paper, only the dot of orange left (photos: see assets/PHOTOS.md) */
+  --wall:url("assets/listen-sun.webp"); --scrim:linear-gradient(180deg,rgba(236,232,225,.05),rgba(236,232,225,0) 30%,rgba(236,232,225,.55) 52%,rgba(236,232,225,.86) 70%,rgba(236,232,225,.94)); }
+:root[data-side="moon"]{ --rec:#050404; --arm-hi:#8C7B72; --arm-lo:#3B312C; --thread:rgba(201,96,58,.7); --glass:rgba(30,23,20,.78); --glass-line:rgba(235,198,178,.14); --np-veil:rgba(12,10,9,.78); --bird:#E8C9B8; --bird2:#C9603A; --glow:#8A2E18; --spark:#F4D3C2; --lab:#BE7C5A;
+  --wall:url("assets/listen-moon.webp"); --scrim:linear-gradient(180deg,rgba(12,10,9,0),rgba(12,10,9,0) 34%,rgba(12,10,9,.55) 54%,rgba(12,10,9,.86) 72%,rgba(12,10,9,.94)); }
 body.listen{ overflow:hidden; }
+.wall{ position:fixed; inset:0; z-index:0; pointer-events:none; background:var(--paper) var(--wall) center/cover no-repeat; transition:opacity .6s; }
+.wall::after{ content:""; position:absolute; inset:0; background:var(--scrim); }
 .lp{ position:fixed; inset:0; z-index:1; overflow-y:auto; overflow-x:hidden; -webkit-overflow-scrolling:touch; padding:0 0 calc(env(safe-area-inset-bottom) + 40px); }
 .lp::-webkit-scrollbar{ display:none; }
 .thread{ position:absolute; left:0; top:0; width:100%; height:760px; pointer-events:none; z-index:0; }
@@ -41,10 +46,8 @@ body.playing .arm{ transform:rotate(0); }
 .mode{ position:relative; z-index:2; display:flex; gap:10px; padding:18px var(--pad) 0; }
 .pill{ display:flex; align-items:center; gap:10px; padding:6px 18px 6px 6px; border-radius:999px; border:1px solid var(--hair); background:var(--glass); font-size:16px; letter-spacing:.06em; }
 .pill i{ width:28px; height:28px; border-radius:50%; display:grid; place-items:center; font-style:normal; font-size:13px; background:var(--ink); color:var(--paper); }
-.pill.on{ background:var(--ink); color:var(--paper); border-color:var(--ink); }
-.pill.on i{ background:var(--paper); color:var(--ink); }
-:root[data-side="moon"] .pill.on{ background:var(--accent); border-color:var(--accent); color:#1A0F0B; }
-:root[data-side="moon"] .pill.on i{ background:#1A0F0B; color:var(--accent); }
+.pill.on{ background:linear-gradient(135deg, rgba(150,92,62,.92), rgba(118,70,46,.88)); color:#F7EFE8; border-color:transparent; }
+.pill.on i{ background:#3A2A22; color:#F7EFE8; }
 .note{ position:relative; z-index:2; margin:12px var(--pad) 0; font-size:14px; color:var(--soft); font-style:italic; }
 .note b{ font-style:normal; font-weight:500; color:var(--ink); }
 
@@ -99,3 +102,9 @@ body.playing .arm{ transform:rotate(0); }
 
 .toast{ position:fixed; left:50%; bottom:calc(env(safe-area-inset-bottom) + 30px); z-index:20; transform:translate(-50%, 10px); opacity:0; pointer-events:none; background:var(--ink); color:var(--paper); padding:9px 16px; border-radius:99px; font-size:14px; transition:opacity .25s, transform .25s; white-space:nowrap; }
 .toast.on{ opacity:1; transform:translate(-50%, 0); }
+
+/* glass like Shoreless's: a light sheet catching the top edge */
+.card, .pill:not(.on){ background:linear-gradient(135deg, rgba(252,249,244,.62), rgba(242,236,228,.38)); box-shadow:0 14px 36px rgba(60,42,30,.16), inset 0 1px 0 rgba(255,255,255,.9); }
+:root[data-side="moon"] .card, :root[data-side="moon"] .pill:not(.on){ background:linear-gradient(135deg, rgba(40,32,28,.7), rgba(24,19,16,.55)); border-color:rgba(235,198,178,.14); box-shadow:0 14px 36px rgba(0,0,0,.3), inset 0 1px 0 rgba(235,198,178,.08); }
+.card .cv{ background-color:#E8DED2; }
+:root[data-side="moon"] .card .cv{ background-color:#2A201C; }
