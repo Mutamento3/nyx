@@ -126,6 +126,19 @@
   tab(TABS[0][1]);
 
   /* ---------- playing ---------- */
+  // play order: in order (looping the list), shuffle, or one song on repeat — remembered on this phone
+  var MODES = ["order", "shuffle", "one"], MODE_NAME = { order: "In order", shuffle: "Shuffle", one: "Repeat one" };
+  var MODE_ICON = { order: '<path d="M4 9h13l-3-3M20 15H7l3 3"/>',
+    shuffle: '<path d="M4 7h3.5c2 0 3 1 4.2 3l1.6 3c1.2 2 2.2 3 4.2 3H20M17 13.5l3 2.5-3 2.5"/><path d="M4 16h3.5c1.2 0 2-.4 2.7-1.1M13.8 8.1c.7-.7 1.5-1.1 2.7-1.1H20M17 4.5L20 7l-3 2.5"/>',
+    one: '<path d="M4 9h13l-3-3M20 15H7l3 3"/><path d="M11.4 10.6l1.1-.8v4.4"/>' };
+  var mode = "order"; try { if (MODES.indexOf(localStorage.getItem("nyx_play_mode")) >= 0) mode = localStorage.getItem("nyx_play_mode"); } catch (e) {}
+  function paintOrder() { $("npMode").innerHTML = '<svg viewBox="0 0 24 24">' + MODE_ICON[mode] + "</svg>"; $("npMode").setAttribute("aria-label", MODE_NAME[mode]); }
+  paintOrder();
+  $("npMode").onclick = function () { mode = MODES[(MODES.indexOf(mode) + 1) % MODES.length]; try { localStorage.setItem("nyx_play_mode", mode); } catch (e) {} paintOrder(); toast(MODE_NAME[mode]); };
+  function nextIdx() {
+    if (mode === "shuffle" && queue.length > 1) { var j; do { j = Math.floor(Math.random() * queue.length); } while (j === idx); return j; }
+    return idx + 1;
+  }
   function play(i) {
     if (!queue.length) return; idx = (i + queue.length) % queue.length; var s = cur = queue[idx];
     paintNow(s); lrc = []; lrcAt = -1; $("lrcIn").innerHTML = '<p class="on">' + (s.lrc || SRC === "netease" ? "…" : "") + "</p>";
@@ -150,11 +163,11 @@
   function toggle() { if (!cur) { if (queue.length || $("list").querySelector(".row")) $("list").querySelector(".row").click(); return; } if (audio.paused) audio.play().catch(function () {}); else audio.pause(); }
   $("play").onclick = function (e) { e.stopPropagation(); toggle(); }; $("npPlay").onclick = toggle;
   $("prev").onclick = function (e) { e.stopPropagation(); play(idx - 1); }; $("npPrev").onclick = function () { play(idx - 1); };
-  $("next").onclick = function (e) { e.stopPropagation(); play(idx + 1); }; $("npNext").onclick = function () { play(idx + 1); };
-  if ("mediaSession" in navigator) try { navigator.mediaSession.setActionHandler("previoustrack", function () { play(idx - 1); }); navigator.mediaSession.setActionHandler("nexttrack", function () { play(idx + 1); }); } catch (e) {}
+  $("next").onclick = function (e) { e.stopPropagation(); play(nextIdx()); }; $("npNext").onclick = function () { play(nextIdx()); };
+  if ("mediaSession" in navigator) try { navigator.mediaSession.setActionHandler("previoustrack", function () { play(idx - 1); }); navigator.mediaSession.setActionHandler("nexttrack", function () { play(nextIdx()); }); } catch (e) {}
   audio.addEventListener("play", function () { document.body.classList.add("playing"); });
   audio.addEventListener("pause", function () { document.body.classList.remove("playing"); });
-  audio.addEventListener("ended", function () { play(idx + 1); });
+  audio.addEventListener("ended", function () { if (mode === "one") { audio.currentTime = 0; audio.play().catch(function () {}); } else play(nextIdx()); });
   audio.addEventListener("timeupdate", tick); audio.addEventListener("loadedmetadata", tick);
   function tick() {
     var d = audio.duration || 0, t = audio.currentTime || 0, p = d ? t / d : 0;
