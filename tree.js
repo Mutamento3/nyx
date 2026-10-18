@@ -9,15 +9,6 @@
 (function () {
   function seeded(s) { return function () { s = s * 16807 % 2147483647; return s / 2147483647; }; }
 
-  // dry-brush streaks: where the ink runs thin toward the end of a stroke, the paper shows through in lines along it
-  function dry(r, k) {
-    var out = [];
-    for (var i = 0; i < k; i++) {
-      var dash = []; for (var d = 0; d < 5; d++) dash.push(18 + r() * 60, 3 + r() * 16);
-      out.push({ f: (r() - .5) * 1.6, lw: .8 + r() * 2, from: .05 + r() * .5, dash: dash });
-    }
-    return out;
-  }
   // the tree in a 390 × 844 frame (scaled to the screen), after Yan's tree.mjs
   function grow(night) {
     var W = 390, H = 844, rnd = seeded(7), UPR = -Math.PI / 2 + .3, P = [];   // v1's bones: 唯 said the first one looked most like a tree
@@ -147,20 +138,6 @@
       ctx.fillStyle = ink(b.root ? .8 : b.tier === 0 ? 1 : b.tier === 1 ? .78 + .2 * near : .55 + .35 * near); ctx.fill();
       var e = at(b, b.pts[n], n, n, tt);   // round the far end too, as its own shape so the winding can't punch a hole
       ctx.beginPath(); ctx.arc(e[0], e[1], b.w1 / 2 * S, 0, Math.PI * 2); ctx.fill();
-      if (b.dry) {   // the paper showing through the brush
-        ctx.strokeStyle = ink(0); ctx.lineCap = "butt";
-        b.dry.forEach(function (s) {
-          var i0 = Math.floor(s.from * n), hw = Math.hypot(L[i0][0] - Rr[i0][0], L[i0][1] - Rr[i0][1]) / 2;
-          if (hw < 4) return;   // too thin to show paper through
-          ctx.lineWidth = Math.min(s.lw * S, hw * .22); ctx.setLineDash(s.dash.map(function (v) { return v * S; })); ctx.beginPath();
-          for (var i = i0; i <= n; i++) {
-            var c = L[i], d2 = Rr[i], x = (c[0] + d2[0]) / 2 + (c[0] - d2[0]) / 2 * s.f * .8, y = (c[1] + d2[1]) / 2 + (c[1] - d2[1]) / 2 * s.f * .8;
-            if (i === i0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-          }
-          ctx.stroke();
-        });
-        ctx.setLineDash([]);
-      }
     }
     function frame(now) {
       var tt = (now - t0) / 1000;
