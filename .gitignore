@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+relay/venv/
+relay/relay.env
+relay/*.db
+relay/uploads/
+relay/*.json
+channel/node_modules/
+channel/.env
+channel/mcp.json
