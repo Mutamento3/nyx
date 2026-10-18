@@ -364,3 +364,7 @@ button{ font:inherit; color:inherit; background:none; border:0; padding:0; curso
 .hold .memo a{ color:var(--accent); word-break:break-all; }
 .hold .memo code{ font-family:var(--mono); font-size:12px; background:var(--hair); padding:1px 5px; border-radius:5px; }
 .hold .memo .zh{ color:var(--soft); font-size:14px; border-top:1px solid var(--hair); padding-top:12px; }
+/* on the water the words go white with a dark halo, so they read over any wave (唯) */
+.tree .tag span{ color:#FBF7F2; opacity:1; text-shadow:0 0 2px rgba(0,0,0,.85), 0 0 6px rgba(0,0,0,.6), 0 0 14px rgba(0,0,0,.4); }
+.tree .tag small{ opacity:.92; }
+:root[data-home="tree"] .title{ color:#FBF7F2; text-shadow:0 0 2px rgba(0,0,0,.8), 0 0 8px rgba(0,0,0,.55), 0 0 16px rgba(0,0,0,.35); }
