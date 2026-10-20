@@ -12,8 +12,9 @@
           or waiting for someone to say yes at the terminal (Claude Code: read off tmux; Codex: the bridge reports it)
   Kitchen GET  /app/kitchen · POST /app/kitchen/{pantry,ask,recipe,photo,photo/comment,log,cooked}
           your pots, seasonings and fridge; recipes your companion writes; what you ate, day by day
-  Window  GET  /app/window · POST /app/window/{line,compact,new,switch} · GET /app/window/list
-          the context line (past it: save memory, then compact), compact now, a new window, go back to an old one.
+  Window  GET  /app/window · POST /app/window/{line,carry,compact,new,switch} · GET /app/window/list
+          the context line (past it: save memory, then compact), compact now, a new window (it is handed the last
+          hours of talk, word for word, up to a set length), go back to an old one.
           Claude Code: done here through tmux. Codex: the bridge picks the command up (GET/POST /app/window/cmd).
 
 Everything is optional: a room whose pieces aren't installed just answers 503.
@@ -472,7 +473,50 @@ def register(app, g):
         return {"path": path, "text": HEART_REDACT.sub(lambda m: (m.group(2) + "***") if m.group(2) else "***", text)}
 
     # ---- Window: the context line, compact, a new window, old windows ----
-    line_file, cmd_file = data_dir / "context_line.json", data_dir / "window_cmd.json"
+    line_file, cmd_file, carry_file = data_dir / "context_line.json", data_dir / "window_cmd.json", data_dir / "window_carry.json"
+
+    def carry_cfg():   # what a new window takes along from the last one: the last N hours of talk, at most M characters
+        try:
+            c = json.loads(carry_file.read_text())
+            return {"hours": max(0.0, min(48.0, float(c.get("hours", 2)))), "chars": max(0, min(60000, int(c.get("chars", 12000))))}
+        except Exception:
+            return {"hours": 2.0, "chars": 12000}
+
+    def carry_text(hours, chars):
+        """The tail of the conversation, from the relay's own log, so it works the same for Claude Code and Codex.
+        Only what the two of you said; thinking and tool calls are left out. Two gates, whichever comes first."""
+        if not hours or not chars:
+            return ""
+        since = (datetime.now(timezone.utc) - timedelta(hours=hours)).isoformat()
+        conn = sqlite3.connect(g["DB_PATH"])
+        try:
+            rows = conn.execute("SELECT ts, direction, text FROM messages WHERE ts >= ? AND kind IN ('user', 'reply') ORDER BY id DESC LIMIT 2000", (since,)).fetchall()
+        finally:
+            conn.close()
+        out, used, ai = [], 0, g.get("AI_NAME", "AI")
+        for ts, d, text in rows:
+            text = (text or "").strip()
+            if not text:
+                continue
+            line = f"[{ts[5:16].replace('T', ' ')}] {human if d == 'in' else ai}: {text}"
+            if used + len(line) > chars and out:
+                break
+            out.append(line); used += len(line) + 1
+        return "\n".join(reversed(out))
+
+    async def hand_over(text):
+        """After a new window starts: wait until it is listening, then give it the tail of the last one as its first note."""
+        if not text:
+            return
+        before = time.time()
+        while time.time() - before < 180:
+            await asyncio.sleep(5)
+            if plugin_subs and time.time() - before > 12:
+                break
+        await broadcast(plugin_subs, {"content": (
+            f"(An automatic note from the app, not typed by {human}.) This is a new window. Here is how the last one ended, "
+            f"word for word, so you can pick up where you left off. Your memory has the rest. No need to reply to this note.\n\n" + text),
+            "user": "app", "ts": now_iso(), "attachments": []})
     ctx = {"nudged_sid": "", "nudged_at": None}
     SID_RE = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
     win_cache = {}
@@ -616,7 +660,7 @@ def register(app, g):
         u = await asyncio.to_thread(usage_now)
         m = current_meter() or {}
         return {"backend": backend(), "line_k": line_k(), "used": u.get("used") or 0, "sid": u.get("sid"),
-                "started_at": u.get("started_at"), "size": ((m.get("context") or {}).get("size")), "nudged": bool(ctx["nudged_at"])}
+                "started_at": u.get("started_at"), "size": ((m.get("context") or {}).get("size")), "nudged": bool(ctx["nudged_at"]), "carry": carry_cfg()}
 
     @app.post("/app/window/line")
     async def window_line(request: Request):
@@ -637,9 +681,19 @@ def register(app, g):
             await claude_compact()
         return {"ok": True}
 
+    @app.post("/app/window/carry")
+    async def window_carry(request: Request):
+        check_auth(request)
+        b = await request.json()
+        carry_file.write_text(json.dumps({"hours": b.get("hours", 2), "chars": b.get("chars", 12000)}))
+        return {"ok": True, **carry_cfg()}
+
     @app.post("/app/window/new")
     async def window_new(request: Request):
         check_auth(request)
+        c = carry_cfg()
+        text = await asyncio.to_thread(carry_text, c["hours"], c["chars"])
+        asyncio.get_running_loop().create_task(hand_over(text))
         if backend() == "codex":
             queue_cmd("new")
         else:

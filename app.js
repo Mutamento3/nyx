@@ -371,6 +371,8 @@
     var w = win; $("mWin").hidden = !w; if (!w) return;
     if (document.activeElement !== $("mLine")) $("mLine").value = w.line_k || 0;
     var k = +$("mLine").value; $("mLineV").textContent = k ? k + "k" : "none";
+    var cy = w.carry || {}; if (document.activeElement !== $("mCarryH") && cy.hours != null) $("mCarryH").value = cy.hours;
+    if (document.activeElement !== $("mCarryC") && cy.chars != null) $("mCarryC").value = cy.chars; carryLabels();
     var ctx = $("mCtx"); ctx.hidden = false;
     var size = w.size || (meterData && meterData.context && meterData.context.size) || 1000000;
     if (!(meterData && meterData.context && meterData.context.used_pct != null)) { ctx.querySelector("b").style.width = Math.min(100, 100 * (w.used || 0) / size) + "%"; }
@@ -382,6 +384,10 @@
   var lineT = 0;
   $("mLine").addEventListener("input", function () { var k = +this.value; $("mLineV").textContent = k ? k + "k" : "none";
     clearTimeout(lineT); lineT = setTimeout(function () { api("/app/window/line", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ line_k: k }) }).then(loadWin).catch(function () {}); }, 500); });
+  function carryLabels() { var h = +$("mCarryH").value; $("mCarryHV").textContent = h ? h + "h" : "none"; $("mCarryCV").textContent = Math.round($("mCarryC").value / 1000) + "k"; }
+  var carryT = 0;   // a new window is handed the last hours of talk word for word, up to this many characters (two gates, whichever comes first)
+  ["mCarryH", "mCarryC"].forEach(function (id) { $(id).addEventListener("input", function () { carryLabels(); clearTimeout(carryT);
+    carryT = setTimeout(function () { api("/app/window/carry", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ hours: +$("mCarryH").value, chars: +$("mCarryC").value }) }).catch(function () {}); }, 500); }); });
   function winAct(path, ask, done) {
     if (ask && !confirm(ask)) return;
     $("mWinNote").textContent = "…";
@@ -389,7 +395,7 @@
       .catch(function (e) { $("mWinNote").textContent = /409/.test(e.message) ? "It's waiting on a question in the terminal — answer that first." : "Didn't work: " + e.message; });
   }
   $("mCompact").onclick = function () { winAct("/app/window/compact", "", "Compacting — give it a minute."); };
-  $("mNew").onclick = function () { winAct("/app/window/new", "Open a new window for " + AI + "? This one closes; what isn't in memory doesn't come along. You can come back to it from Windows.", "New window open."); };
+  $("mNew").onclick = function () { winAct("/app/window/new", "Open a new window for " + AI + "? This one closes. " + (+$("mCarryH").value ? "The new one is handed the last " + $("mCarryHV").textContent + " of your talk (up to " + $("mCarryCV").textContent + " characters); the rest comes from memory." : "Nothing is carried over; only memory comes along.") + " You can come back to this one from Windows.", "New window open."); };
   $("mWins").onclick = function () { if (hold) hold.windows(function () { loadWin(); loadMeter(); }); };
   function loadMeter() {
     if (!key) return Promise.resolve();

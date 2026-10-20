@@ -73,6 +73,8 @@
       <div class="win" id="mWin" hidden>
         <div class="ln"><span>line</span><input type="range" id="mLine" min="0" max="900" step="20" value="0" aria-label="Context line"><em id="mLineV">none</em></div>
         <p class="hint">Past the line, it saves to memory first, then compacts once it's quiet. All the way left: no line.</p>
+        <div class="ln"><span>carry</span><input type="range" id="mCarryH" min="0" max="12" step="0.5" value="2" aria-label="Hours a new window takes along"><em id="mCarryHV">2h</em></div>
+        <div class="ln"><span>up to</span><input type="range" id="mCarryC" min="2000" max="40000" step="2000" value="12000" aria-label="Most characters a new window takes along"><em id="mCarryCV">12k</em></div>
         <div class="acts"><button type="button" id="mCompact">Compact now</button><button type="button" id="mNew">New window</button><button type="button" id="mWins">Windows</button></div>
         <p class="hint" id="mWinNote"></p>
       </div>
