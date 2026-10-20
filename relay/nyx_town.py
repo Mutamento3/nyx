@@ -25,6 +25,7 @@ OMBRE_TOKEN = os.environ.get("RELAY_OMBRE_MCP_TOKEN", "")
 XC_URL = os.environ.get("RELAY_XINCHAO_URL", "")
 XC_TOKEN = os.environ.get("RELAY_XINCHAO_TOKEN", "")
 COMPANION_DIR = Path(os.environ.get("RELAY_COMPANION_DIR", str(Path.home() / "companion")))
+MEMORY_DIR = Path(os.environ.get("RELAY_MEMORY_DIR", str(COMPANION_DIR / "memory")))   # the folder of .md files; town/serve.py points it anywhere
 _cache = {"at": 0.0, "data": None}
 TTL = 120
 
@@ -110,7 +111,7 @@ def _folder() -> list:
     """No Ombre: read memory/*.md. A file = a topic, a top-level bullet = one memory.
     Weight comes from how recently the file changed, so memories you keep editing stay lit."""
     stars, now = [], time.time()
-    for f in sorted((COMPANION_DIR / "memory").glob("*.md")):
+    for f in sorted(MEMORY_DIR.glob("*.md")):
         if f.name.startswith(("_", ".")):
             continue
         try:

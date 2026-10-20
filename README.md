@@ -88,6 +88,15 @@ Where the memories come from (`relay/nyx_town.py`):
 - **Weather (optional):** `RELAY_XINCHAO_URL` / `RELAY_XINCHAO_TOKEN` for a mood service; without it the sky stays clear.
 - Town state (coins, recipes, shop, crops) is kept in `RELAY_TOWN_STATE` (default `town_state.json` beside the relay database).
 
+**Just the town, without Nyx:** clone the repo and run
+
+```bash
+bash town/serve.sh --memory ~/path/to/memory      # a folder of .md files: one file = one house, one top-level bullet = one window
+# or: bash town/serve.sh --ombre https://your-ombre-brain/mcp
+```
+
+It sets up a small Python venv the first time and prints an address with a key; open it once and the page remembers. Add `--host 0.0.0.0` to open it from your phone on the same network. A bullet starting with 📌 stays lit, one starting with 🫧 grows as a flower, a date at the front (`10/18`, `2026-10-18`) makes it fade from that day.
+
 Your companion can invent new crops within set limits — see [`town/SPECIES.md`](town/SPECIES.md). You approve each one in the town's herbarium before it is planted.
 
 ## Contacts

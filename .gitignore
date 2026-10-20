@@ -8,3 +8,6 @@ relay/*.json
 channel/node_modules/
 channel/.env
 channel/mcp.json
+town/.venv/
+town/.key
+town/.state.json
