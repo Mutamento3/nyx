@@ -5,9 +5,12 @@
    Every call carries "Authorization: Bearer <key>". */
 (function () {
   "use strict";
-  var C = window.NYX || {}, RELAY = (function(){try{return localStorage.getItem("nyx_relay")}catch(e){return null}})() || C.relay || "/relay", AI = (function(){try{return localStorage.getItem("nyx_ai")}catch(e){return null}})() || C.aiName || "Companion", ME = C.meName || "Me";   // nyx_relay / nyx_ai: whoever you picked on the contacts page
+  var C = window.NYX || {}, HOME = C.relay || "/relay", ME = C.meName || "Me";
+  // the chat talks to whoever you picked on the contacts page (nyx_relay / nyx_chat_key / nyx_ai); everything else in the house — the hold, town, listen, kitchen, attic — stays with the first companion (HOME + nyx_key)
+  function ls(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+  var RELAY = ls("nyx_relay") || HOME, AI = (RELAY !== HOME && ls("nyx_ai")) || C.aiName || "Companion";
   var root = document.documentElement, $ = function (id) { return document.getElementById(id); };
-  var key = null, lastId = 0, byId = new Map(), drafts = new Map(), quote = null;
+  var key = null, hkey = null, lastId = 0, byId = new Map(), drafts = new Map(), quote = null;
   var log = $("log"), text = $("text"), sendBtn = $("send");
 
   var paintSide = NyxPaper.paint;
@@ -87,9 +90,11 @@
   }
 
   /* ---------- relay ---------- */
-  function api(path, opt) {
-    opt = opt || {}; opt.headers = Object.assign({ "Authorization": "Bearer " + key }, opt.headers || {});
-    return fetch(RELAY + path, opt).then(function (r) {
+  function api(path, opt) { return call(RELAY, key, path, opt); }        // the one you're chatting with
+  function hapi(path, opt) { return call(HOME, hkey, path, opt); }       // the house: hold sheets
+  function call(base, k, path, opt) {
+    opt = opt || {}; opt.headers = Object.assign({ "Authorization": "Bearer " + k }, opt.headers || {});
+    return fetch(base + path, opt).then(function (r) {
       if (r.status === 401) { var e = new Error("unauthorized"); e.auth = true; throw e; }
       if (!r.ok) throw new Error("HTTP " + r.status);
       return r.json();
@@ -442,25 +447,31 @@
   setInterval(function () { if (!document.hidden && !$("room").hidden) loadMeter(); }, 60000);
 
   /* ---------- gate ---------- */
+  function backHome() {   // the picked contact's key stopped working: fall back to the first companion instead of locking the door
+    ["nyx_relay", "nyx_chat_key", "nyx_ai"].forEach(function (x) { try { localStorage.removeItem(x); } catch (e) {} });
+    RELAY = HOME; AI = C.aiName || "Companion"; key = hkey;
+  }
   function enter(k) {
-    key = k;
-    return api("/app/history?limit=200").then(function (d) {
+    hkey = k; key = RELAY === HOME ? k : (ls("nyx_chat_key") || k);
+    return (RELAY === HOME ? Promise.resolve() : hapi("/app/status")).then(function () {
+      return api("/app/history?limit=200").catch(function (e) { if (e.auth && RELAY !== HOME) { backHome(); return api("/app/history?limit=200"); } throw e; });
+    }).then(function (d) {
       try { localStorage.setItem("nyx_key", k); } catch (e) {}
-      try {   // keep the contacts list in step with the key that just opened the door, or a tap there would hand the old one back
-        var cl = JSON.parse(localStorage.getItem("nyx_contacts") || "[]"), hit = cl.filter(function (c) { return c.relay === RELAY; })[0];
+      try {   // the first contact's key follows the door's, or a tap there would hand the old one back
+        var cl = JSON.parse(localStorage.getItem("nyx_contacts") || "[]"), hit = cl.filter(function (c) { return c.relay === HOME; })[0];
         if (hit && hit.key !== k) { hit.key = k; localStorage.setItem("nyx_contacts", JSON.stringify(cl)); }
       } catch (e) {}
       $("gate").hidden = true; $("aiName").textContent = AI;
       log.innerHTML = ""; byId.clear(); lastId = 0;
       (d.messages || []).forEach(put); openStream(); loadMeter();
-      if (!hold && window.NyxHold) hold = NyxHold(api, { me: ME });
+      if (!hold && window.NyxHold) hold = NyxHold(hapi, { me: ME, chat: api });
       pollBusy();
       if (!home) makeHome();
       show(location.hash === "#chat" ? "room" : "home");
     });
   }
   function logout() {
-    key = null; if (streamCtl) streamCtl.abort(); streamCtl = null;
+    key = null; hkey = null; if (streamCtl) streamCtl.abort(); streamCtl = null;
     try { localStorage.removeItem("nyx_key"); } catch (e) {}
     $("room").hidden = true; $("home").hidden = true; $("gate").hidden = false;
   }

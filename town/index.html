@@ -152,7 +152,7 @@ import * as M from './mem.js';
 import * as LAND from './land.js';
 
 // 记忆的目录和心情：走自己家后台，要钥匙；没有钥匙就只看样板房
-const REL = (() => { try { return localStorage.getItem('nyx_relay') || '/relay'; } catch (_) { return '/relay'; } })();   // whoever you picked on the contacts page
+const REL = '/relay';   // the town is always the first companion's, whoever you're chatting with
 const SECRET = (() => { try { return new URLSearchParams(location.search).get('token') || (localStorage.getItem('nyx_key') || localStorage.getItem('companion_secret')) || ''; } catch (_) { return ''; } })();
 let DATA = null;
 if (SECRET) { try { const r = await fetch(REL + '/app/memtown', { headers: { Authorization: 'Bearer ' + SECRET }, cache: 'no-store' }); if (r.ok) DATA = await r.json(); } catch (_) {} }

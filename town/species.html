@@ -53,7 +53,7 @@ function show(sp) {
 }
 function placeLabs() { for (const [el, p] of labs) { const v = p.clone().project(cam); el.style.left = (v.x + 1) / 2 * innerWidth + 'px'; el.style.top = (1 - v.y) / 2 * innerHeight + 'px'; } }
 
-const REL = (() => { try { return localStorage.getItem('nyx_relay') || '/relay'; } catch (_) { return '/relay'; } })();   // whoever you picked on the contacts page
+const REL = '/relay';   // the town is always the first companion's, whoever you're chatting with
 const SECRET = (() => { try { return new URLSearchParams(location.search).get('token') || (localStorage.getItem('nyx_key') || localStorage.getItem('companion_secret')) || ''; } catch (_) { return ''; } })();
 const api = (path, body) => fetch(REL + '/app/memtown' + path, body ? { method: 'POST', headers: { Authorization: 'Bearer ' + SECRET, 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : { headers: { Authorization: 'Bearer ' + SECRET } }).then((r) => r.json());
 const list = [...S.SAMPLES]; let cur = 0;

@@ -60,6 +60,7 @@ svg.w{ display:block; width:100%; height:14px; color:var(--hair); }
 .ed .acts button{ border-radius:999px; padding:8px 16px; font:14px var(--serif); letter-spacing:.06em; }
 .ed .go{ background:var(--ink); color:var(--paper); }
 .ed .del{ margin-right:auto; color:var(--seal); }
+.ed .warn{ font-size:12.5px; line-height:1.6; color:var(--soft); margin:4px 0 0; }
 .ed .err{ font-size:12.5px; color:var(--seal); min-height:1em; }
 </style>
 </head>
@@ -72,7 +73,7 @@ svg.w{ display:block; width:100%; height:14px; color:var(--hair); }
   <h1>联系人 <small>Contacts</small><span class="cnt" id="cnt"></span></h1>
   <div id="list"></div>
   <button type="button" class="add" id="add">＋ 添 一 个</button>
-  <p class="hint">按住一行可以改名字、换头像</p>
+  <p class="hint">第一位是家里的，小镇、一起听、厨房、底舱都是它的；点别人只换聊天<br>按住一行可以改名字、换头像</p>
 </main>
 <div class="ed" id="ed" hidden><form id="form" autocomplete="off">
   <b id="edTitle">添一个</b>
@@ -80,6 +81,7 @@ svg.w{ display:block; width:100%; height:14px; color:var(--hair); }
   <label>名字</label><input id="edName" maxlength="16" required>
   <label>后台地址</label><input id="edRelay" placeholder="/relay-codex" required>
   <label>钥匙</label><input id="edKey" type="password" required>
+  <p class="warn" id="edWarn">添进来的只换聊天对象，小镇、一起听、厨房还是第一位的。想在同一台服务器上装第二只，再跑一遍安装脚本，它会给你地址和钥匙</p>
   <div class="err" id="edErr"></div>
   <div class="acts"><button type="button" class="del" id="edDel">删掉</button><button type="button" id="edX">算了</button><button type="submit" class="go">好</button></div>
 </form></div>
@@ -103,7 +105,12 @@ svg.w{ display:block; width:100%; height:14px; color:var(--hair); }
   if (!list.length) list = [{ name: C.aiName || "Companion", relay: C.relay || "/relay", key: get("nyx_key") || "" }];
   function save() { return set("nyx_contacts", JSON.stringify(list)); }
   if (list[0].key) save();   // never seed an entry with no key; the gate fills it in once you're through
-  var curRelay = get("nyx_relay") || C.relay || "/relay";
+  var HOME = C.relay || "/relay", curRelay = get("nyx_relay") || HOME;
+  // picking someone only changes who the chat talks to; the house (town, listen, kitchen, the hold) always stays with the first one, on nyx_key
+  function pick(c) {
+    if (!c || c.relay === HOME) { set("nyx_relay", null); set("nyx_chat_key", null); set("nyx_ai", null); if (c) set("nyx_key", c.key); curRelay = HOME; }
+    else { set("nyx_relay", c.relay); set("nyx_chat_key", c.key); set("nyx_ai", c.name); curRelay = c.relay; }
+  }
 
   var CN = "零一二三四五六七八九";
   function cn(n) { if (n < 10) return CN[n]; if (n < 20) return "十" + (n % 10 ? CN[n % 10] : ""); return CN[Math.floor(n / 10)] + "十" + (n % 10 ? CN[n % 10] : ""); }
@@ -138,7 +145,7 @@ svg.w{ display:block; width:100%; height:14px; color:var(--hair); }
   $("list").addEventListener("contextmenu", function (e) { e.preventDefault(); });
   $("list").onclick = function (e) {
     var b = e.target.closest("[data-i]"); if (!b || pressed) return;
-    var c = list[+b.dataset.i]; set("nyx_relay", c.relay); set("nyx_key", c.key); set("nyx_ai", c.name);
+    pick(list[+b.dataset.i]);
     location.href = "index.html#chat";
   };
 
@@ -147,8 +154,8 @@ svg.w{ display:block; width:100%; height:14px; color:var(--hair); }
   function edSeal() { $("edSeal").outerHTML = seal({ name: $("edName").value || "?", avatar: pic }).replace('class="seal', 'id="edSeal" class="seal'); }
   function edit(i) {
     editing = i; var c = i >= 0 ? list[i] : { name: "", relay: "", key: "" }; pic = c.avatar || null;
-    $("edTitle").textContent = i >= 0 ? "改一改" : "添一个"; $("edName").value = c.name; $("edRelay").value = c.relay; $("edKey").value = c.key;
-    $("edDel").hidden = i < 0 || list.length < 2; $("edErr").textContent = ""; edSeal(); $("ed").hidden = false;
+    $("edTitle").textContent = i >= 0 ? "改一改" : "添一个"; $("edWarn").hidden = i >= 0; $("edRelay").readOnly = i === 0; if (i === 0) $("edRelay").value = HOME;   /* the house keeps its address, so the key is checked against it */ $("edName").value = c.name; $("edRelay").value = c.relay; $("edKey").value = c.key;
+    $("edDel").hidden = i <= 0;   /* the first one is the house; it stays */ $("edErr").textContent = ""; edSeal(); $("ed").hidden = false;
   }
   $("add").onclick = function () { edit(-1); };
   $("edX").onclick = function () { $("ed").hidden = true; };
@@ -164,7 +171,7 @@ svg.w{ display:block; width:100%; height:14px; color:var(--hair); }
   };
   $("edDel").onclick = function () {
     var c = list[editing]; list.splice(editing, 1); save();
-    if (c.relay === curRelay) { var n = list[0]; set("nyx_relay", n.relay); set("nyx_key", n.key); set("nyx_ai", n.name); curRelay = n.relay; }
+    if (c.relay === curRelay) pick(list[0]);
     $("ed").hidden = true; paint();
   };
   $("form").onsubmit = function (e) {
@@ -176,7 +183,9 @@ svg.w{ display:block; width:100%; height:14px; color:var(--hair); }
     fetch(c.relay + "/app/status", { headers: { Authorization: "Bearer " + c.key }, cache: "no-store" }).then(function (r) {
       if (r.status === 401 || r.status === 403) throw new Error("钥匙不对");
       if (!r.ok) throw new Error("这个地址没有应门");
-      if (editing >= 0) { if (list[editing].relay === curRelay) { set("nyx_relay", c.relay); set("nyx_key", c.key); set("nyx_ai", c.name); curRelay = c.relay; } list[editing] = c; } else list.push(c);
+      if (editing === 0) { c.relay = HOME; set("nyx_key", c.key); if (curRelay === HOME) pick(c); }   // the first one keeps the house address
+      else if (editing > 0 && list[editing].relay === curRelay) pick(c);
+      if (editing >= 0) list[editing] = c; else list.push(c);
       if (!save()) { $("edErr").textContent = "手机里放不下了，头像换小一点"; return; }
       $("ed").hidden = true; paint(); probe(c);
     }).catch(function (err) { $("edErr").textContent = err.message === "Failed to fetch" ? "这个地址够不着" : err.message; });

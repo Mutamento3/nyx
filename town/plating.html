@@ -186,7 +186,7 @@ $('#pick').onclick = (e) => {
   drawPick(); setVessel(); if (tab === 'prep') buildPrep();
 };
 // 三种来法：?cook= 从小镇厨房下锅来的，料定死了，摆完「端上桌」才算做成；?view= 从菜谱点进来看那盘；什么都不带就是样板随便摆
-const REL = (() => { try { return localStorage.getItem('nyx_relay') || '/relay'; } catch (_) { return '/relay'; } })();   // whoever you picked on the contacts page
+const REL = '/relay';   // the town is always the first companion's, whoever you're chatting with
 const Q = new URLSearchParams(location.search), SECRET = (() => { try { return Q.get('token') || (localStorage.getItem('nyx_key') || localStorage.getItem('companion_secret')) || ''; } catch (_) { return ''; } })();
 const COOK = (() => { try { return JSON.parse(Q.get('cook') || 'null'); } catch (_) { return null; } })(), VIEW = Q.get('view');
 const api = (path, body) => fetch(REL + '/app/memtown' + path, body ? { method: 'POST', headers: { Authorization: 'Bearer ' + SECRET, 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : { headers: { Authorization: 'Bearer ' + SECRET } }).then((r) => r.json());

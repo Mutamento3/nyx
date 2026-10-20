@@ -1,7 +1,7 @@
 /* Nyx — the hold: the engineering board and the heart, as sheets over any page (the hold: 底舱).
    Board: jot down bugs and ideas; the AI claims a ticket before it edits files and closes it after (relay/board.py).
    Heart: read-only — the persona and memory your companion lives by, and the relay code it runs on. Keys are blanked.
-   NyxHold(api, names) → { board(), heart(), folder(app, open) }. api(path, opt) is the chat page's relay call. */
+   NyxHold(api, names) → { board(), heart(), folder(app, open) }. api(path, opt) is the house relay call; names.chat is the one you're chatting with (old windows follow it). */
 (function () {
   "use strict";
   function esc(s) { return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
@@ -126,7 +126,7 @@
     function windows(after) {
       if (!Wn) Wn = sheet('Windows <small>窗口</small>');
       Wn.body.innerHTML = '<p class="none">Looking…</p>'; Wn.open();
-      api("/app/window/list").then(function (d) {
+      (names.chat || api)("/app/window/list").then(function (d) {
         var ws = d.windows || [];
         Wn.body.innerHTML = ws.length ? ws.map(function (w, i) {
           return '<button type="button" class="file win' + (w.current ? " cur" : "") + '" data-i="' + i + '"><span class="wt">' + (w.current ? "<b>in use</b> · " : "") + "opened " + esc(when(w.started) || "–")
@@ -137,7 +137,7 @@
           var b = e.target.closest("[data-i]"); if (!b) return; var w = ws[+b.dataset.i]; if (w.current) return;
           if (!confirm("Go back to the window opened " + when(w.started) + "? The one in use closes; you can come back to it here too.")) return;
           Wn.body.innerHTML = '<p class="none">Switching…</p>';
-          api("/app/window/switch", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sid: w.sid }) })
+          (names.chat || api)("/app/window/switch", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sid: w.sid }) })
             .then(function () { Wn.close(); if (after) setTimeout(after, 2500); }).catch(function (e) { Wn.body.innerHTML = '<p class="none">Didn\u2019t switch: ' + esc(e.message) + "</p>"; });
         };
       }).catch(function () { Wn.body.innerHTML = '<p class="none">Couldn\u2019t get the list.</p>'; });

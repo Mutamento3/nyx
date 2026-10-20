@@ -116,7 +116,7 @@
 <div class="toast" id="toast"></div>
 <script>
 (function(){
-  var C = window.NYX || {}, RELAY = (function(){try{return localStorage.getItem("nyx_relay")}catch(e){return null}})() || C.relay || "/relay", AI = (function(){try{return localStorage.getItem("nyx_ai")}catch(e){return null}})() || C.aiName || "AI";
+  var C = window.NYX || {}, RELAY = C.relay || "/relay", AI = C.aiName || "AI";
   var SECRET = ""; try{ SECRET = localStorage.getItem("nyx_key") || ""; }catch(_){}
   document.documentElement.style.setProperty("--ai", JSON.stringify(AI + "："));
   var H = { Authorization: "Bearer " + SECRET };
