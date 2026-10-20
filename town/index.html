@@ -623,7 +623,7 @@ function paintBg(c = bgCols) {
 const far = new THREE.Group(); scene.add(far);
 const edgeD = (x, z) => Math.min(...RECTS.map(([cx, cz, hw, hd]) => Math.hypot(Math.max(0, Math.abs(x - cx) - hw), Math.max(0, Math.abs(z - cz) - hd))));   // 离最近一块方块地的边多远
 const PALE = new THREE.Color('#e6e0d2'), CLIFF = new THREE.Color('#3e3430');
-const land = LAND.island(RECTS, HAR ? { grass: '#8e7466', grassD: '#5e4a40', sand: '#4e423d', deep: '#2a6f9c', lift: HILL, tone: (x, z, h, c) => { if (RIVERC && h < -.3 && nearRiver(x, z, .4)) { c.set('#2a6f9c'); return; } if (h > -.05) c.lerp(PALE, 1 - smoothT(.6, 3.6, edgeD(x, z))); else c.lerp(CLIFF, smoothT(-.05, -.4, h)); },   /* 岛沿一道棕边像泥墙。地贴着白地先接白，往外才转棕，崖面压黑 */   /* 圣托里尼的地是火山土，崖黑，白房子踩在深色上才亮 */ carve: (x, z) => SEA(x, z) ? -1.0 - (x - COASTX(z)) * .25 : nearRiver(x, z, .08) ? -.62 : RIVER && Math.abs(z) < RW + .25 ? -.85 + Math.max(0, Math.abs(z) - RW + .1) * 1.2 : null } : {}); far.add(land);
+const land = LAND.island(RECTS, HAR ? { grass: '#8e7466', grassD: '#5e4a40', sand: '#4e423d', deep: '#2a6f9c', lift: HILL, tone: (x, z, h, c) => { if (RIVERC && h < -.3 && nearRiver(x, z, .4)) { c.set('#2a6f9c'); return; } if (h > -.05) c.copy(PALE);   /* 岸上的地全是白的，只有崖面压黑 */ else c.lerp(CLIFF, smoothT(-.05, -.4, h)); },   /* 岛沿一道棕边像泥墙。地贴着白地先接白，往外才转棕，崖面压黑 */   /* 圣托里尼的地是火山土，崖黑，白房子踩在深色上才亮 */ carve: (x, z) => SEA(x, z) ? -1.0 - (x - COASTX(z)) * .25 : nearRiver(x, z, .08) ? -.62 : RIVER && Math.abs(z) < RW + .25 ? -.85 + Math.max(0, Math.abs(z) - RW + .1) * 1.2 : null } : {}); far.add(land);
 if (PAVED) {   // 唐风：方块地铺青石板；港口：灰白圆石子。一块块错缝的石板，缝深一点，每块深浅不一
   const cv = document.createElement('canvas'); cv.width = cv.height = 256; const x = cv.getContext('2d');
   x.fillStyle = HAR ? '#efebe2' : '#8f948c'; x.fillRect(0, 0, 256, 256);

@@ -126,17 +126,22 @@ def _folder() -> list:
             body = _MD.sub(lambda mm: mm.group(1) or "", m.group(1)).strip()
             if len(body) < 4:
                 continue
-            dm, md = _DATE.search(body), _MDAY.match(body)
+            dm, md = _DATE.search(body), _MDAY.match(body.lstrip("📌🫧 "))
             if dm:
                 date = f"{dm.group(1)}-{int(dm.group(2)):02d}-{int(dm.group(3)):02d}"
             elif md:
                 date = time.strftime("%Y", time.localtime(f.stat().st_mtime)) + f"-{int(md.group(1)):02d}-{int(md.group(2)):02d}"
             else:
                 date = time.strftime("%Y-%m-%d", time.localtime(f.stat().st_mtime))
-            name = _LEADDATE.sub("", body)
+            name = _LEADDATE.sub("", body.lstrip("📌🫧 "))
             title = (re.split(r"[。；;：:，,]", name, 1)[0] or name)[:24]
-            stars.append({"id": "md-" + hashlib.sha1(f"{f.name}:{body}".encode()).hexdigest()[:12], "kind": "dynamic", "date": date, "title": title,
-                          "domain": [topic], "v": .5, "a": .4, "imp": 5, "w": max(3.6, 9.5 - age * .25), "tags": []})
+            try:   # a dated bullet fades from its own date; undated ones from when the file last changed
+                age_m = (now - time.mktime(time.strptime(date, "%Y-%m-%d"))) / 86400 if (dm or md) else age
+            except Exception:
+                age_m = age
+            pinned, feel = body.startswith(("📌", "[pin]")), body.startswith("🫧")   # 📌 pinned (always lit) · 🫧 a feeling (grows as a flower)
+            stars.append({"id": "md-" + hashlib.sha1(f"{f.name}:{body}".encode()).hexdigest()[:12], "kind": "pinned" if pinned else "feel" if feel else "dynamic", "date": date, "title": title.lstrip("📌🫧 ").replace("[pin]", "").strip(),
+                          "domain": [topic], "v": .5, "a": .4, "imp": 5, "w": max(3.0, 10.5 - max(0, age_m) * .12), "tags": []})
     return stars
 
 
