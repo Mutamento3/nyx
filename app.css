@@ -340,10 +340,25 @@ button{ font:inherit; color:inherit; background:none; border:0; padding:0; curso
 .hold .file span{ flex:none; font-size:11px; color:var(--faint); font-family:var(--mono); }
 .hold .view{ white-space:pre-wrap; word-break:break-word; font:12px/1.55 var(--mono); margin:0; padding:4px 4px 30px; }
 .hold .view.md{ font:14.5px/1.75 var(--serif); }
-.hold .apps{ display:grid; grid-template-columns:repeat(3, 1fr); gap:18px 10px; padding:8px 4px 14px; }
-.hold .apps button{ border:0; background:none; color:var(--ink); display:flex; flex-direction:column; align-items:center; gap:6px; font:14px var(--serif); cursor:pointer; }
-.hold .apps i{ width:54px; height:54px; border-radius:16px; display:grid; place-items:center; font:italic 22px var(--serif); border:1px solid var(--hair); background:color-mix(in srgb, var(--paper) 70%, transparent); }
-.hold .apps small{ font-size:11px; color:var(--soft); letter-spacing:.08em; margin-top:-3px; }
+/* a folder: a table of contents on paper, not a grid of icons. One ink river down the left with the numerals strung on it, like the home page */
+.hold.fold .sheet{ background:var(--paper); -webkit-backdrop-filter:none; backdrop-filter:none; }
+:root[data-side="moon"] .hold.fold .sheet{ background:#17120F; }
+.hold.fold .hh{ justify-content:flex-start; gap:12px; padding:24px 26px 6px; }
+.hold.fold .hh b{ flex:1; display:flex; align-items:baseline; font:600 28px/1.2 var(--serif); font-style:normal; letter-spacing:.1em; }
+.hold.fold .hh b small{ font:italic 400 19px var(--serif); letter-spacing:0; margin-left:10px; }
+.hold.fold .hh .cnt{ font:13px var(--serif); font-style:normal; color:var(--faint); letter-spacing:.2em; margin-left:auto; padding-left:12px; }
+.hold.fold .hh .x{ display:none; }
+.hold .toc{ position:relative; padding:8px 8px 6px; }
+.hold .toc::before{ content:""; position:absolute; left:25px; top:24px; bottom:30px; width:2px; border-radius:2px; background:var(--river); -webkit-mask:linear-gradient(180deg, #000 0 70%, transparent); mask:linear-gradient(180deg, #000 0 70%, transparent); }
+.hold .toc .it{ display:flex; align-items:flex-start; gap:18px; width:100%; border:0; background:none; color:var(--ink); text-align:left; padding:14px 0; cursor:pointer; font-family:var(--serif); }
+.hold .toc .n{ position:relative; z-index:1; flex:none; width:36px; text-align:center; font:italic 18px/1.5 var(--serif); color:var(--soft); background:var(--paper); }
+:root[data-side="moon"] .hold .toc .n{ background:#17120F; }
+.hold .toc .it.cur .n{ color:var(--accent); }
+.hold .toc .tx{ display:flex; flex-direction:column; min-width:0; }
+.hold .toc b{ font-size:20px; font-weight:500; letter-spacing:.06em; }
+.hold .toc b small{ font:italic 15px var(--serif); color:var(--soft); margin-left:8px; letter-spacing:0; }
+.hold .toc em{ font-style:normal; font-size:13px; color:var(--soft); margin-top:3px; line-height:1.5; }
+.hold .toc .ar{ margin-left:auto; align-self:center; font:italic 20px var(--serif); color:var(--faint); padding-right:6px; }
 
 /* the window part of the gauge: the context line and what you can do with the window */
 .meter .win{ margin-top:16px; padding-top:14px; border-top:1px solid var(--hair); }

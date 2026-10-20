@@ -107,13 +107,15 @@
 
     /* ---------- a folder of rooms (NYX.apps entry with apps: [...]) ---------- */
     var F = null;
-    function folder(app, open) {
-      if (!F) F = sheet("");
-      F.head.innerHTML = esc(app.en) + (app.zh ? " <small>" + esc(app.zh) + "</small>" : "");
-      F.body.innerHTML = '<div class="apps">' + app.apps.map(function (a, i) {
-        return '<button type="button" data-i="' + i + '"><i>' + esc((a.en || "?").charAt(0)) + "</i>" + esc(a.en) + (a.zh ? "<small>" + esc(a.zh) + "</small>" : "") + "</button>";
+    var ROMAN = ["i", "ii", "iii", "iv", "v", "vi", "vii", "viii", "ix", "x"], CN = "一二三四五六七八九十";
+    function folder(app, open) {   // a table of contents: an ink river down the left, a roman numeral per room on it; the room you went into last time is red
+      if (!F) { F = sheet(""); F.el.classList.add("fold"); }
+      var last = null; try { last = localStorage.getItem("nyx_room_" + app.id); } catch (e) {}
+      F.head.innerHTML = esc(app.zh || app.en) + (app.zh ? " <small>" + esc(app.en) + "</small>" : "") + '<span class="cnt">' + (CN.charAt(app.apps.length - 1) || app.apps.length) + " 间</span>";
+      F.body.innerHTML = '<div class="toc">' + app.apps.map(function (a, i) {
+        return '<button type="button" class="it' + (a.id === last ? " cur" : "") + '" data-i="' + i + '"><span class="n">' + (ROMAN[i] || i + 1) + '</span><span class="tx"><b>' + esc(a.zh || a.en) + (a.zh ? "<small>" + esc(a.en) + "</small>" : "") + "</b>" + (a.d ? "<em>" + esc(a.d) + "</em>" : "") + '</span><span class="ar">›</span></button>';
       }).join("") + "</div>";
-      F.body.onclick = function (e) { var b = e.target.closest("[data-i]"); if (b) { F.close(); open(app.apps[+b.dataset.i]); } };
+      F.body.onclick = function (e) { var b = e.target.closest("[data-i]"); if (!b) return; var r = app.apps[+b.dataset.i]; try { localStorage.setItem("nyx_room_" + app.id, r.id); } catch (e2) {} F.close(); open(r); };
       F.open();
     }
 

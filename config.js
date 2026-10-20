@@ -19,17 +19,17 @@ window.NYX = {
   apps: [
     { id: "chat", en: "Chat", zh: "聊天", art: "tokens" },
     { id: "listen", en: "Listen", zh: "一起听", href: "listen.html", art: "sampling" },
-    // a folder: one block on the home page, a small heading with its rooms in the drawer
+    // a folder: one block on the home page, a small heading with its rooms in the drawer; d is the one line under each room in the folder sheet
     { id: "home", en: "Home", zh: "小家", art: "clusters", apps: [
-      { id: "attic", en: "Attic", zh: "杂物间", href: "attic.html" },
-      { id: "room", en: "Room", zh: "房间", href: "room.html" }] },
+      { id: "attic", en: "Attic", zh: "杂物间", d: "收着的小东西", href: "attic.html" },
+      { id: "room", en: "Room", zh: "房间", d: "一间空屋子，自己摆家具", href: "room.html" }] },
     { id: "hold", en: "Hold", zh: "底舱", art: "beam", apps: [
-      { id: "memory", en: "Memory", zh: "记忆" },        // add href: "<your Ombre-Brain / Memory Galaxy address>" once it's set up
-      { id: "town", en: "Town", zh: "小镇", href: "town/index.html" },   // the memory town: one house per topic, one window per memory (town/, relay/nyx_town.py)
-      { id: "board", en: "Board", zh: "工程板" },
-      { id: "heart", en: "Heart", zh: "心脏" }] },
+      { id: "memory", en: "Memory", zh: "记忆", d: "写进记忆库的那些" },        // add href: "<your Ombre-Brain / Memory Galaxy address>" once it's set up
+      { id: "town", en: "Town", zh: "小镇", d: "一个主题一栋房子，一条记忆一扇窗", href: "town/index.html" },   // the memory town: one house per topic, one window per memory (town/, relay/nyx_town.py)
+      { id: "board", en: "Board", zh: "工程板", d: "它手上在修什么" },
+      { id: "heart", en: "Heart", zh: "心脏", d: "它的人设和后台，只读" }] },
     { id: "life", en: "Life", zh: "生活", art: "context", apps: [
-      { id: "kitchen", en: "Kitchen", zh: "厨房", href: "kitchen.html" }] }
+      { id: "kitchen", en: "Kitchen", zh: "厨房", d: "做饭，端给它吃", href: "kitchen.html" }] }
   ],
 
   // Room: an empty room to furnish with .glb files — docs/room-blender.md
