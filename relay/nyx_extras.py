@@ -83,6 +83,8 @@ CLAUDE_MODELS = os.environ.get("RELAY_MODEL_OPTIONS",
 def register(app, g):
     import nyx_town   # the memory town: /app/memtown*
     nyx_town.register(app, g)
+    import nyx_group   # the group chat: /g on the first companion's relay, /channel/inject on every relay
+    nyx_group.register(app, g)
     check_auth, broadcast, now_iso = g["check_auth"], g["broadcast"], g["now_iso"]
     plugin_subs, human = g["plugin_subs"], g["HUMAN_NAME"]
     upload_dir, clean_filename = g["UPLOAD_DIR"], g["clean_filename"]

@@ -96,6 +96,29 @@ EOF
 fi
 HOST=$(sed -n 's/^NYX_HOST=//p' relay/relay.env)
 SECRET=$(sed -n 's/^RELAY_SECRET=//p' relay/relay.env)
+if [ -n "$SLUG" ]; then   # the group chat: the first relay is the room; tell each about the other
+  HUB_PORT=$(sed -n 's/.*--port \([0-9]*\).*/\1/p' /etc/systemd/system/nyx-relay.service)
+  FIRST_ENV="$FIRST/relay.env" SLUG="$SLUG" NAME="$AI_NAME" PORT="$PORT" HUB_PORT="${HUB_PORT:-3011}" python3 - <<'PY'
+import os, re
+e = os.environ
+def setkv(path, k, v):
+    s = open(path, encoding="utf-8").read() if os.path.exists(path) else ""
+    line = f"{k}={v}"
+    s = re.sub(rf"^{k}=.*$", line, s, flags=re.M) if re.search(rf"^{k}=", s, re.M) else s.rstrip("\n") + "\n" + line + "\n"
+    open(path, "w", encoding="utf-8").write(s)
+first = open(e["FIRST_ENV"], encoding="utf-8").read()
+m = re.search(r"^RELAY_GROUP_KEY=(.+)$", first, re.M)   # one group key, made the first time a second companion joins
+gkey = m.group(1).strip() if m else __import__("secrets").token_urlsafe(32)
+cur = (re.search(r"^RELAY_GROUP_PEERS=(.*)$", first, re.M) or [None, ""])[1]
+name = re.sub(r'[|;\n"\\\']', " ", e["NAME"])
+peers = [p for p in cur.split(";") if p and not p.startswith(e["SLUG"] + "|")]
+peers.append(f"{e['SLUG']}|{name}|http://127.0.0.1:{e['PORT']}")
+setkv(e["FIRST_ENV"], "RELAY_GROUP_PEERS", ";".join(peers))
+setkv(e["FIRST_ENV"], "RELAY_GROUP_KEY", gkey)
+for k, v in (("RELAY_GROUP_HUB_URL", f"http://127.0.0.1:{e['HUB_PORT']}"), ("RELAY_GROUP_KEY", gkey), ("RELAY_GROUP_SELF", e["SLUG"])):
+    setkv("relay/relay.env", k, v)
+PY
+fi
 sudo tee /etc/systemd/system/nyx-relay$SFX.service >/dev/null <<EOF
 [Unit]
 Description=Nyx relay$SFX
@@ -245,6 +268,7 @@ fi
 say "7/7 Starting"
 sudo systemctl daemon-reload
 sudo systemctl enable -q --now nyx-relay$SFX
+[ -n "$SLUG" ] && sudo systemctl restart nyx-relay   # the first relay picks up its new group member
 sudo systemctl enable -q caddy && sudo systemctl restart caddy
 sudo systemctl enable -q nyx-companion$SFX
 

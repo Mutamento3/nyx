@@ -9,6 +9,7 @@
   // the chat talks to whoever you picked on the contacts page (nyx_relay / nyx_chat_key / nyx_ai); everything else in the house — the hold, town, listen, kitchen, attic — stays with the first companion (HOME + nyx_key)
   function ls(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
   var RELAY = ls("nyx_relay") || HOME, AI = (RELAY !== HOME && ls("nyx_ai")) || C.aiName || "Companion";
+  var GROUP = /\/g$/.test(RELAY);   // the group chat: the first companion's relay at /g; nobody's gauge, every answer says who it's from
   var root = document.documentElement, $ = function (id) { return document.getElementById(id); };
   var key = null, hkey = null, lastId = 0, byId = new Map(), drafts = new Map(), quote = null;
   var log = $("log"), text = $("text"), sendBtn = $("send");
@@ -131,6 +132,7 @@
   var busyT = 0;
   function pollBusy() {
     clearTimeout(busyT);
+    if (GROUP) return;
     if (!key || document.hidden || $("room").hidden) { busyT = setTimeout(pollBusy, 5000); return; }
     api("/app/busy").then(function (d) { d.at = Date.now(); busy = d; paintState(); }).catch(function () { busy = null; })
       .then(function () { busyT = setTimeout(pollBusy, busy && busy.state === "busy" ? 2500 : 5000); });
@@ -217,6 +219,7 @@
     el.className = "msg " + (me ? "me" : "ai") + (kind === "thinking" ? " think" : kind === "act" ? " act" : "");
     el.dataset.id = m.id; el.dataset.from = m.from; el.dataset.ts = m.ts;
     var q = m.meta && m.meta.quote, inner = q ? '<span class="q">' + esc((q.who ? q.who + "  " : "") + (q.text || "")) + "</span>" : "";
+    var who = !me && m.meta && m.meta.speaker; if (who) inner = '<span class="who">' + esc(who) + "</span>" + inner;
     if (kind === "thinking") inner += '<details><summary>thinking…</summary>' + rich(m.text) + "</details>";
     else {
       var atts = (m.meta && m.meta.attachments) || [];
@@ -228,7 +231,7 @@
     el.innerHTML = '<div class="body">' + inner + '<span class="t">' + hm(m.ts) + "</span></div>";
     wireAtts(el, (m.meta && m.meta.attachments) || []);
     el.querySelectorAll("img.stk").forEach(stkFallback);
-    el.ondblclick = function () { setQuote({ id: m.id, who: me ? ME : AI, text: m.text }); };
+    el.ondblclick = function () { setQuote({ id: m.id, who: me ? ME : (who || AI), text: m.text }); };
     return el;
   }
   // put one message in its place by id (history and stream can both deliver it; the second copy just replaces)
@@ -403,7 +406,7 @@
   $("mNew").onclick = function () { winAct("/app/window/new", "Open a new window for " + AI + "? This one closes. " + (+$("mCarryH").value ? "The new one is handed the last " + $("mCarryHV").textContent + " of your talk (up to " + $("mCarryCV").textContent + " characters); the rest comes from memory." : "Nothing is carried over; only memory comes along.") + " You can come back to this one from Windows.", "New window open."); };
   $("mWins").onclick = function () { if (hold) hold.windows(function () { loadWin(); loadMeter(); }); };
   function loadMeter() {
-    if (!key) return Promise.resolve();
+    if (!key || GROUP) return Promise.resolve();
     return api("/app/meter").then(function (d) { meterData = d; paintOrb(); if (!$("meter").hidden) { paintMeter(); paintWin(); } }).catch(function () { meterData = null; paintOrb(); });
   }
   function openMeter() { paintMeter(); paintWin(); $("meter").hidden = false; loadMeter(); loadWin(); }

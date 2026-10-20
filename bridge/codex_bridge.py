@@ -124,6 +124,7 @@ class Bridge:
         self.turn_done = asyncio.Event()
         self.last_activity = time.time()
         self.nudging = False
+        self.chat = None   # "group" while answering a line from the group chat
         self.seen = 0
         self.ctx, self.models, self.model, self.default_model = None, [], MODEL, None
 
@@ -140,6 +141,14 @@ class Bridge:
 
     # ---- relay side ----
     async def out(self, body):
+        if self.chat == "group":   # in the group chat: no live drafts, just the finished line, sent back to the room
+            if body.get("type") in ("thinking_delta",):
+                return
+            if body.get("type") == "reply_delta":
+                if not body.get("done") or not (body.get("final_text") or "").strip():
+                    return
+                body = {"type": "reply", "text": body["final_text"]}
+            body = {**body, "chat_id": "group"}
         try:
             await self.http.post(f"{RELAY}/channel/out", headers=AUTH, json=body)
         except Exception as e:
@@ -236,7 +245,7 @@ class Bridge:
             it = p.get("item") or {}
             if it.get("type") == "agentMessage":
                 text = it.get("text") or ""
-                if self.nudging and text.strip() == SILENT:
+                if (self.nudging or self.chat == "group") and text.strip() == SILENT:
                     text = ""            # it chose to stay quiet; an empty final text saves nothing
                 await self.out({"type": "reply_delta", "stream_id": it["id"], "text": "", "done": True, "final_text": text})
             elif it.get("type") == "reasoning" and THINKING and not self.nudging:
@@ -336,6 +345,9 @@ class Bridge:
             elif path:
                 notes.append(f"[file: {path}]")
         text = "\n".join(x for x in [m.get("content") or ""] + notes if x)
+        self.chat = m.get("chat_id") if m.get("chat_id") == "group" else None
+        if self.chat:
+            text += f"\n(If you have nothing to add in the group, reply with exactly {SILENT}.)"
         inputs.insert(0, {"type": "text", "text": text or "(a picture)"})
         await self.run_turn(inputs)
 
@@ -389,6 +401,7 @@ class Bridge:
             if m.get("cmd"):
                 await self.window_cmd(m)
                 continue
+            self.chat = None
             if m.get("nudge"):
                 await self.run_turn([{"type": "text", "text": (
                     f"(Not a message — nobody typed. It's been quiet for a while. If there's something you want to say to "

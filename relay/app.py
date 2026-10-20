@@ -678,6 +678,8 @@ async def channel_out(request: Request):
     """The AI's reply/react. Persist + fan out to the PWA."""
     check_auth(request)
     body = await request.json()
+    if body.get("chat_id") == "group" and _group_out:   # [Nyx] an answer in the group chat goes to the room, not the private chat (nyx_group.py)
+        return await _group_out(body)
     kind = body.get("type", "reply")
     if kind in ("thinking_delta", "reply_delta"):
         return await handle_stream_delta(kind, body)
@@ -1069,6 +1071,7 @@ async def loop_proxy_delete(request: Request, path: str):
     return loop_json("/loop/" + path, method="DELETE")
 
 
+_group_out = None   # set by nyx_group when this relay is in a group
 # [Nyx] attic, listen-together, Clawd, usage — see nyx_extras.py
 import nyx_extras  # noqa: E402
 nyx_extras.register(app, globals())

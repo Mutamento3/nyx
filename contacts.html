@@ -27,6 +27,8 @@ body.contacts{ overflow:auto; }
   font:500 29px/1 var(--serif); color:var(--paper); background:var(--ink); }
 .seal img{ width:100%; height:100%; object-fit:cover; display:block; }
 .seal.pic{ background:none; }   /* a picture stands on its own, no frame */
+.row.grp .seal{ background:none; color:var(--ink); box-shadow:inset 0 0 0 2px var(--ink); }   /* the group: a hollow seal */
+.row.grp.cur .seal{ background:none; color:var(--seal); box-shadow:inset 0 0 0 2px var(--seal); }
 .row.cur .seal{ background:var(--seal); } .row.cur .seal.pic{ background:none; }
 .row.cur .seal.pic + span .nm{ color:var(--seal); }   /* with a picture, the red moves to the name */
 .row.off .seal, .row.off .nm{ opacity:.45; }
@@ -71,9 +73,10 @@ svg.w{ display:block; width:100%; height:14px; color:var(--hair); }
 <main class="ct">
   <div class="bar"><a href="index.html">‹ Back</a></div>
   <h1>联系人 <small>Contacts</small><span class="cnt" id="cnt"></span></h1>
+  <div id="grp"></div>
   <div id="list"></div>
   <button type="button" class="add" id="add">＋ 添 一 个</button>
-  <p class="hint">第一位是家里的，小镇、一起听、厨房、底舱都是它的；点别人只换聊天<br>按住一行可以改名字、换头像</p>
+  <p class="hint">第一位是家里的，小镇、一起听、厨房、底舱都是它的；点别人只换聊天<br>装了第二只，最上面会多一个「一家」，大家一起聊<br>按住一行可以改名字、换头像</p>
 </main>
 <div class="ed" id="ed" hidden><form id="form" autocomplete="off">
   <b id="edTitle">添一个</b>
@@ -137,6 +140,24 @@ svg.w{ display:block; width:100%; height:14px; color:var(--hair); }
       .then(function (s) { if (s) { c.ago = ago(s.last_msg_age_sec); paint(); } }).catch(function () {});
   }
   paint(); list.forEach(probe);
+
+  // the group chat: shows up once a second companion has joined (the installer's --as); it lives on the first one's relay at /g
+  var G = { relay: HOME + "/g", name: "一家" };
+  function paintGroup() {
+    if (!G.members || G.members.length < 2) { $("grp").innerHTML = ""; return; }
+    $("grp").innerHTML = '<button type="button" class="row grp' + (curRelay === G.relay ? " cur" : "") + '"><div class="seal">家</div><span><div class="nm">一家</div><div class="st">'
+      + esc([C.meName || "我"].concat(G.members).join("、")) + '</div></span><span class="t">' + esc(G.ago || "") + "</span></button>" + wave;
+  }
+  fetch(G.relay + "/healthz", { cache: "no-store" }).then(function (r) { return r.ok ? r.json() : null; }).then(function (h) {
+    if (!h || !h.members) return; G.members = h.members; paintGroup();
+    var k = get("nyx_key"); if (k) fetch(G.relay + "/app/status", { headers: { Authorization: "Bearer " + k }, cache: "no-store" }).then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (st) { if (st) { G.ago = ago(st.last_msg_age_sec); paintGroup(); } }).catch(function () {});
+  }).catch(function () {});
+  $("grp").onclick = function (e) {
+    if (!e.target.closest(".row")) return;
+    set("nyx_relay", G.relay); set("nyx_chat_key", get("nyx_key")); set("nyx_ai", G.name);
+    location.href = "index.html#chat";
+  };
 
   // tap: talk to them. Every page reads nyx_relay / nyx_key / nyx_ai, so the town, Listen, the kitchen and the hold follow too
   var pressed = false, timer = null;

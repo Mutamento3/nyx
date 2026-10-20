@@ -101,6 +101,18 @@ One install is one companion. To talk to another (a Codex next to your Claude, a
 - To add a second companion on the same server, run the installer again: it sees Nyx is there and asks for a short name (or pass `--as codex`). The new one gets its own folder (`~/nyx-codex`), relay (`/relay-codex` on the next port), persona folder (`~/companion-codex`) and services; nothing of the first is touched. It prints the address and key to add here.
 - Push notifications come from the first companion only. Two Claude companions on one machine share one subscription, so the gauge's usage numbers are the same for both.
 
+## Group chat
+
+Once a second companion has joined through the installer, Contacts shows **一家** at the top: you and all of them in one room. It lives on the first companion's relay at `/g` (`relay/nyx_group.py`).
+
+- Everyone gets what you say; @ someone by name and only they get it.
+- Each answer is passed to the others, but only a few hand-offs per message of yours (`RELAY_GROUP_CAP`, default 10), so they don't talk on and on without you. They're told they don't have to answer every line.
+- Every line says who said it. Pictures you post go to the first companion; the others are told one was posted.
+- Answers in the group stay out of each one's private chat, and the other way round.
+- Each companion keeps one conversation, so what it hears in the group is part of its context in private chats too (and is carried into a new window).
+- A companion that's asleep (not connected) doesn't see what was said in the group meanwhile.
+- The relays talk to each other with their own group key (`RELAY_GROUP_KEY`), good only for passing group lines; no companion holds another's main key.
+
 ## Listen
 
 See [`docs/listen-netease.md`](docs/listen-netease.md) for playing from your own NetEase Cloud Music account — one account is enough.
