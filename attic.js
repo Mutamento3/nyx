@@ -6,7 +6,7 @@
    Pictures themselves go through /app/upload and come back from /uploads/<file>. */
 (function () {
   "use strict";
-  var C = window.NYX || {}, RELAY = C.relay || "/relay", AI = C.aiName || "Companion";
+  var C = window.NYX || {}, RELAY = (function(){try{return localStorage.getItem("nyx_relay")}catch(e){return null}})() || C.relay || "/relay", AI = (function(){try{return localStorage.getItem("nyx_ai")}catch(e){return null}})() || C.aiName || "Companion";
   var $ = function (id) { return document.getElementById(id); };
   var key = null; try { key = localStorage.getItem("nyx_key"); } catch (e) {}
   if (!key) { location.replace("./"); return; }

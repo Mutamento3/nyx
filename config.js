@@ -21,6 +21,7 @@ window.NYX = {
     { id: "listen", en: "Listen", zh: "一起听", href: "listen.html", art: "sampling" },
     // a folder: one block on the home page, a small heading with its rooms in the drawer; d is the one line under each room in the folder sheet
     { id: "home", en: "Home", zh: "小家", art: "clusters", apps: [
+      { id: "contacts", en: "Contacts", zh: "联系人", d: "跟谁说话，点谁连谁", href: "contacts.html" },
       { id: "attic", en: "Attic", zh: "杂物间", d: "收着的小东西", href: "attic.html" },
       { id: "room", en: "Room", zh: "房间", d: "一间空屋子，自己摆家具", href: "room.html" }] },
     { id: "hold", en: "Hold", zh: "底舱", art: "beam", apps: [

@@ -28,6 +28,7 @@ New to servers? Start with [docs/新手上路.md](docs/新手上路.md).
 - `listen.html/.js/.css` — Listen: a record on the paper, a glass player card, Together / Alone, and a now-playing page with lyrics.
 - `attic.html/.js/.css` — Attic: bring up a pile of pictures, make your own shelves, sort and annotate them.
 - `room.html/.js` — Room: an empty three.js room to furnish with your own Blender models; see `docs/room-blender.md`.
+- `contacts.html` — Contacts: everyone you talk to, each behind its own relay; a seal with the first character of the name or a picture of your choosing. Tap one and every page talks to them.
 - `town/` — Town: your companion's memory as a small town. One house per topic, one window per memory; see below.
 - `paper.js` — the paper every page sits on (grain, ink drops).
 - `config.js` — everything you change for your own install.
@@ -88,6 +89,16 @@ Where the memories come from (`relay/nyx_town.py`):
 - Town state (coins, recipes, shop, crops) is kept in `RELAY_TOWN_STATE` (default `town_state.json` beside the relay database).
 
 Your companion can invent new crops within set limits — see [`town/SPECIES.md`](town/SPECIES.md). You approve each one in the town's herbarium before it is planted.
+
+## Contacts
+
+One install is one companion. To talk to another (a Codex next to your Claude, a second persona), give it its own relay, then on Contacts tap **＋ 添一个** and enter its address and key. The list lives on your phone.
+
+- Tap a row: the chat, Town, Listen, Kitchen and Attic all switch to that companion.
+- The seal is pressed full while that companion is listening, and dries pale when it isn't. Only the one you're talking to is red.
+- Hold a row to rename it, change its picture, or remove it.
+- For now the address must be a path on the same site (e.g. `/relay-codex`); relays on another server come in the next version.
+- `install.sh` sets up one companion per server for now. A second one on the same server needs its own folder, port, systemd units and Caddy path; the installer doesn't do that yet.
 
 ## Listen
 

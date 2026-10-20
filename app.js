@@ -5,7 +5,7 @@
    Every call carries "Authorization: Bearer <key>". */
 (function () {
   "use strict";
-  var C = window.NYX || {}, RELAY = C.relay || "/relay", AI = C.aiName || "Companion", ME = C.meName || "Me";
+  var C = window.NYX || {}, RELAY = (function(){try{return localStorage.getItem("nyx_relay")}catch(e){return null}})() || C.relay || "/relay", AI = (function(){try{return localStorage.getItem("nyx_ai")}catch(e){return null}})() || C.aiName || "Companion", ME = C.meName || "Me";   // nyx_relay / nyx_ai: whoever you picked on the contacts page
   var root = document.documentElement, $ = function (id) { return document.getElementById(id); };
   var key = null, lastId = 0, byId = new Map(), drafts = new Map(), quote = null;
   var log = $("log"), text = $("text"), sendBtn = $("send");
@@ -446,6 +446,10 @@
     key = k;
     return api("/app/history?limit=200").then(function (d) {
       try { localStorage.setItem("nyx_key", k); } catch (e) {}
+      try {   // keep the contacts list in step with the key that just opened the door, or a tap there would hand the old one back
+        var cl = JSON.parse(localStorage.getItem("nyx_contacts") || "[]"), hit = cl.filter(function (c) { return c.relay === RELAY; })[0];
+        if (hit && hit.key !== k) { hit.key = k; localStorage.setItem("nyx_contacts", JSON.stringify(cl)); }
+      } catch (e) {}
       $("gate").hidden = true; $("aiName").textContent = AI;
       log.innerHTML = ""; byId.clear(); lastId = 0;
       (d.messages || []).forEach(put); openStream(); loadMeter();

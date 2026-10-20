@@ -6,7 +6,7 @@
    Song change → POST {relay}/app/music/now { id, name, artist, state, together } (ignored if your relay doesn't have it). */
 (function () {
   "use strict";
-  var C = window.NYX || {}, L = C.listen || {}, RELAY = C.relay || "/relay", AI = C.aiName || "your companion";
+  var C = window.NYX || {}, L = C.listen || {}, RELAY = (function(){try{return localStorage.getItem("nyx_relay")}catch(e){return null}})() || C.relay || "/relay", AI = (function(){try{return localStorage.getItem("nyx_ai")}catch(e){return null}})() || C.aiName || "your companion";
   var root = document.documentElement, $ = function (id) { return document.getElementById(id); };
   var key = null; try { key = localStorage.getItem("nyx_key"); } catch (e) {}
   if (!key) { location.replace("./"); return; }

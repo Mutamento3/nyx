@@ -152,9 +152,10 @@ import * as M from './mem.js';
 import * as LAND from './land.js';
 
 // 记忆的目录和心情：走自己家后台，要钥匙；没有钥匙就只看样板房
+const REL = (() => { try { return localStorage.getItem('nyx_relay') || '/relay'; } catch (_) { return '/relay'; } })();   // whoever you picked on the contacts page
 const SECRET = (() => { try { return new URLSearchParams(location.search).get('token') || (localStorage.getItem('nyx_key') || localStorage.getItem('companion_secret')) || ''; } catch (_) { return ''; } })();
 let DATA = null;
-if (SECRET) { try { const r = await fetch('/relay/app/memtown', { headers: { Authorization: 'Bearer ' + SECRET }, cache: 'no-store' }); if (r.ok) DATA = await r.json(); } catch (_) {} }
+if (SECRET) { try { const r = await fetch(REL + '/app/memtown', { headers: { Authorization: 'Bearer ' + SECRET }, cache: 'no-store' }); if (r.ok) DATA = await r.json(); } catch (_) {} }
 const MEMS = DATA?.stars?.length ? DATA.stars : null;
 M.useSpecies(Object.values(DATA?.town?.species || {}).filter((v) => v.status === 'ok'));   // 小机造的、她点过头的新品种
 
@@ -952,7 +953,7 @@ const winById = {}, houseOf = {};
 memGroup.traverse((o) => { if (o.userData.mem && !o.isMesh) { winById[o.userData.mem.id] = o; let p = o.parent; while (p && !p.userData.house) p = p.parent; if (p) houseOf[o.userData.mem.id] = p.userData.house; } });
 async function act(kind, m) {
   try {
-    const r = await fetch('/relay/app/memtown/' + kind, { method: 'POST', headers: { Authorization: 'Bearer ' + SECRET, 'Content-Type': 'application/json' }, body: JSON.stringify({ id: m.id }) });
+    const r = await fetch(REL + '/app/memtown/' + kind, { method: 'POST', headers: { Authorization: 'Bearer ' + SECRET, 'Content-Type': 'application/json' }, body: JSON.stringify({ id: m.id }) });
     const d = await r.json(); T.nian = d.nian; if (d.notice) T.notice = d.notice;
     nianEl.textContent = '念 ' + d.nian; nianEl.classList.remove('pop'); void nianEl.offsetWidth; nianEl.classList.add('pop');
     const now = Date.now() / 1000;
@@ -1000,7 +1001,7 @@ document.getElementById('bDex').onclick = () => {
     return `<div class="sp"><i style="background:${sp.fruit}"></i><div><b>${sp.zh}</b> <small style="display:inline">× ${list.length}</small><small>${sp.about}</small><small>加工后：${sp.cooked}</small></div></div>`; }).join(''));
   document.querySelectorAll('#sheet .judge').forEach((a) => a.onclick = async (e) => {
     e.preventDefault(); a.textContent = '…';
-    try { const r = await fetch('/relay/app/memtown/species/judge', { method: 'POST', headers: { Authorization: 'Bearer ' + SECRET, 'Content-Type': 'application/json' }, body: JSON.stringify({ id: a.dataset.id, ok: !!a.dataset.ok }) }).then((x) => x.json());
+    try { const r = await fetch(REL + '/app/memtown/species/judge', { method: 'POST', headers: { Authorization: 'Bearer ' + SECRET, 'Content-Type': 'application/json' }, body: JSON.stringify({ id: a.dataset.id, ok: !!a.dataset.ok }) }).then((x) => x.json());
       if (r.ok) { const u = new URL(location.href); u.searchParams.set('dex', '1'); location.replace(u); } else toast(r.why || '没成'); } catch (_) { toast('没连上家里'); }   // 种下以后重开一遍，田里才长出来
   });
 };
@@ -1029,7 +1030,7 @@ function showKitchen(sel = []) {
 const SHOP_N = { type: '房型', wall: '楼上的墙', base: '一楼门面', awning: '遮阳篷', ivy: '爬山虎', stall: '门口小摊' };
 const TYPE_ZH = { cafe: '街角小店', paris: '巴黎公寓', farm: '普罗旺斯农舍', tower: '街角塔楼' }, IVY_ZH = ['不爬', '一点', '半面墙', '爬满'];
 const DEF_DEC = { wall: '奶油', base: '墨绿', awning: '黄白', ivy: 0, stall: '不摆' };
-const shopApi = (body) => fetch('/relay/app/memtown/shop', { method: 'POST', headers: { Authorization: 'Bearer ' + SECRET, 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then((r) => r.json());
+const shopApi = (body) => fetch(REL + '/app/memtown/shop', { method: 'POST', headers: { Authorization: 'Bearer ' + SECRET, 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then((r) => r.json());
 function showShop(msg = '') {
   const PR = T.prices || {}, cur = (c) => c === 'type' ? SHOP.type : String(SHOP.dec[c] ?? DEF_DEC[c]);
   const cats = SHOP.type === 'cafe' ? Object.keys(SHOP_N) : ['type'];
@@ -1059,11 +1060,11 @@ function showShop(msg = '') {
 // 端给小机吃：后台记一笔、查出这盘用了哪几条记忆，再用她的名义往聊天里递一句，小机在那边真的尝
 async function feedAI(name) {
   try {
-    const j = await fetch('/relay/app/memtown/feed', { method: 'POST', headers: { Authorization: 'Bearer ' + SECRET, 'Content-Type': 'application/json' }, body: JSON.stringify({ name }) }).then((r) => r.json());
+    const j = await fetch(REL + '/app/memtown/feed', { method: 'POST', headers: { Authorization: 'Bearer ' + SECRET, 'Content-Type': 'application/json' }, body: JSON.stringify({ name }) }).then((r) => r.json());
     if (!j.ok) { toast(j.why || '没端过去'); return; }
     const titles = j.mems.length ? j.mems.map((m) => `《${m.title || '没起名字的一条'}》`).join('') : (j.dish.species || []).map((k) => M.SPECIES[k]?.zh).filter(Boolean).join('、');
     const text = `🍽 端来一盘「${name}」\n料是：${titles}\n尝尝吃出了什么`;
-    const r = await fetch('/relay/app/send', { method: 'POST', headers: { Authorization: 'Bearer ' + SECRET, 'Content-Type': 'application/json' }, body: JSON.stringify({ text }) });
+    const r = await fetch(REL + '/app/send', { method: 'POST', headers: { Authorization: 'Bearer ' + SECRET, 'Content-Type': 'application/json' }, body: JSON.stringify({ text }) });
     if (!r.ok) { toast('没递进聊天'); return; }
     DISHES[name] = j.dish; toast('端过去了，去聊天看它吃'); showKitchen();
   } catch (_) { toast('没连上家里'); }
