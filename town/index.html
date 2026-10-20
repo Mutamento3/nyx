@@ -138,7 +138,8 @@ const RIVERC = HAR ? new THREE.CatmullRomCurve3([[-8.4, -34], [-7.2, -27], [-6.4
 const RIVP = RIVERC ? RIVERC.getSpacedPoints(420) : [];
 let RIVERBANK = null;   // 岸墙等地皮建好再砌
 const RIVW = (i, n) => 2.4 * (1 + .5 * Math.sin(i / n * 31) + .22 * Math.sin(i / n * 83 + 1));   // 远景里是一根头发丝，整条宽一倍   // 从海里来回到海，一道海峡，两头都通海，不再收细   // 河宽一会儿宽一会儿窄
-const nearRiver = (x, z, pad = 0) => RIVP.some((p, i) => Math.hypot(p.x - x, p.z - z) < .5 * RIVW(i, RIVP.length) + pad);
+const FLARE = (i, n) => .6 * Math.max(0, 1 - Math.min(i, n - i) / 14);   // 两头出海口张开一点；水带、挖地、染色都按这个走，差一点就露一条没挖的地
+const nearRiver = (x, z, pad = 0) => RIVP.some((p, i) => Math.hypot(p.x - x, p.z - z) < .5 * RIVW(i, RIVP.length) + FLARE(i, RIVP.length - 1) + pad);
 const gy = (x, z) => HILL(x, z);
 function seat(o) {   // 坡上的房子：照占地最高那头抬起来，底下垫一块白挡土墙
   o.updateMatrixWorld(true); const bb = new THREE.Box3().setFromObject(o);
@@ -200,7 +201,7 @@ if (HAR) {   // 河：底下一圈白石沿，上面一条蓝水，顺着弧走�
     const m2 = new THREE.Mesh(g2, m); m2.userData.noLine = true; m2.userData.noCast = true; townOnly.add(m2); return m2;
   };
   const BANKW = (i, n) => .5 * RIVW(i, n) - .45;   // 岸墙往水里收半格，挖地那一圈锯齿藏在墙后面
-  window.__riverWater = ribbon((i, n) => BANKW(i, n) + .08 + .6 * Math.max(0, 1 - Math.min(i, n - i) / 14), () => -.5, mat('#a6d4f2', { transparent: true, opacity: .9, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }));   // 比岸墙宽一点，墙脚泡在水里；两头出海口再张开一点，盖住水带和挖地台阶之间那道黑缝；颜色等外面的海建好再跟湖水走
+  window.__riverWater = ribbon((i, n) => BANKW(i, n) + .08 + FLARE(i, n), () => -.5, mat('#a6d4f2', { transparent: true, opacity: .9, side: THREE.FrontSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }));   // 比岸墙宽一点，墙脚泡在水里；两头出海口跟着 FLARE 张开；只画正面，出海口拐弯处有个三角翻过去，画反面就是一道黑梭子；颜色等外面的海建好再跟湖水走
   RIVERBANK = (H) => {   // 两岸：岸上有地的那一侧才砌墙、压一道白石沿；到了海里就没了
     const n = RIVP.length - 1, side = [1, -1].map((sd) => RIVP.map((p, i) => { const t = RIVERC.getTangentAt(i / n), w = BANKW(i, n) + .2, x = p.x - t.z * w * sd, z = p.z + t.x * w * sd, w2 = .5 * RIVW(i, n) + .7, xo = p.x - t.z * w2 * sd, zo = p.z + t.x * w2 * sd, wx = p.x - t.z * BANKW(i, n) * sd, wz = p.z + t.x * BANKW(i, n) * sd; return SEA(x, z) || wx - COASTX(wz) > -.15 || SEA(xo, zo) || H(xo, zo) < -.3 ? null : Math.max(0, gy(x, z)); }));   /* 东口岸墙砌到海里去了。墙脚过了海岸线、或者这一侧外面没地，就不砌 */   // 岸顶按街面算，不按挖过的地皮
     const wallM = mat('#ece8de', { side: THREE.DoubleSide }), capM = mat('#f6f4ee', { side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
