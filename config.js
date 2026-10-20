@@ -25,6 +25,7 @@ window.NYX = {
       { id: "room", en: "Room", zh: "房间", href: "room.html" }] },
     { id: "hold", en: "Hold", zh: "底舱", art: "beam", apps: [
       { id: "memory", en: "Memory", zh: "记忆" },        // add href: "<your Ombre-Brain / Memory Galaxy address>" once it's set up
+      { id: "town", en: "Town", zh: "小镇", href: "town/index.html" },   // the memory town: one house per topic, one window per memory (town/, relay/nyx_town.py)
       { id: "board", en: "Board", zh: "工程板" },
       { id: "heart", en: "Heart", zh: "心脏" }] },
     { id: "life", en: "Life", zh: "生活", art: "context", apps: [
