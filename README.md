@@ -70,7 +70,7 @@ Optional, for the other rooms:
 | GET | `/app/meter` | `{ backend, model:{id,name}, limits:[{label, used, resets_at}], context:{used_pct}, models:[{id,name}], model_applies, chosen }` — the floating ball in the chat |
 | POST | `/app/model` | `{ model }` — switch the companion's model from the floating ball |
 | GET | `/app/usage` | `{ five_hour: { used, resets_at }, seven_day: {…} }` — Claude Code usage limits, see `relay/README.md` |
-| GET/POST | `/app/board`, `/app/board/<id>` | the engineering board in the Hold; the AI uses `relay/board.py` (`next`, `claim`, `note`, `done`); its routine is in [`docs/AI-WORKFLOW.md`](docs/AI-WORKFLOW.md) |
+| GET/POST | `/app/board`, `/app/board/<id>` | the Yard (船坞), the engineering board in the Hold; the AI uses `relay/board.py` (`next`, `claim`, `note`, `done`); its routine is in [`docs/AI-WORKFLOW.md`](docs/AI-WORKFLOW.md) |
 | GET | `/app/heart`, `/app/heart/file?path=` | read-only: `~/companion/CLAUDE.md` or `AGENTS.md`, `~/companion/memory/*.md`, the relay code; keys are blanked |
 | GET/POST | `/app/window`, `/app/window/{line,compact,new,switch}`, `/app/window/list` | the gauge's lower half: the context line (past it the AI saves to memory, then the window compacts), compact now, a new window, old windows. Claude Code through tmux; Codex through the bridge (`/app/window/cmd`) |
 | GET/POST | `/app/kitchen`, `/app/kitchen/{pantry,ask,recipe,photo,photo/comment,log,cooked}` | the Kitchen: pantry, recipes the AI writes, photos of what you made, a timeline of meals |

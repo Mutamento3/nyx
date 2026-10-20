@@ -50,7 +50,7 @@
     }
     function board() {
       if (!B) {
-        B = sheet('Board <small>工程板</small>');
+        B = sheet('Yard <small>船坞</small>');   // the engineering board: where the hold's work gets done
         B.body.addEventListener("click", function (e) {
           var t = e.target.closest("[data-tab]"); if (t) { tab = t.dataset.tab; boardPaint(); return; }
           var card = e.target.closest(".tk"); if (!card) return;
