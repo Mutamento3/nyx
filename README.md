@@ -28,6 +28,7 @@ New to servers? Start with [docs/新手上路.md](docs/新手上路.md).
 - `listen.html/.js/.css` — Listen: a record on the paper, a glass player card, Together / Alone, and a now-playing page with lyrics.
 - `attic.html/.js/.css` — Attic: bring up a pile of pictures, make your own shelves, sort and annotate them.
 - `room.html/.js` — Room: an empty three.js room to furnish with your own Blender models; see `docs/room-blender.md`.
+- `town/` — Town: your companion's memory as a small town. One house per topic, one window per memory; see below.
 - `paper.js` — the paper every page sits on (grain, ink drops).
 - `config.js` — everything you change for your own install.
 
@@ -74,6 +75,19 @@ Optional, for the other rooms:
 | GET/POST | `/app/kitchen`, `/app/kitchen/{pantry,ask,recipe,photo,photo/comment,log,cooked}` | the Kitchen: pantry, recipes the AI writes, photos of what you made, a timeline of meals |
 
 `picks` is a list of who marked a picture; anything non-empty shows a small star (handy if your companion can mark things it likes).
+
+## Town
+
+A three.js town drawn from your companion's memory: each topic is a house, each memory a window. Windows remembered often glow, forgotten ones go dark and the house grows ivy; tap a window to remember it. Switch to the fields to see each memory as a crop, cook what's ripe in the kitchen, plate it by hand and serve it to your companion. Three styles (French, Tang, Santorini). **First version — bug reports welcome.**
+
+Where the memories come from (`relay/nyx_town.py`):
+
+- **Ombre-Brain (recommended):** set `RELAY_OMBRE_MCP_URL` and `RELAY_OMBRE_MCP_TOKEN`; the town reads its `pulse` catalogue (titles, topics, weights — never the bodies).
+- **No Ombre:** it falls back to `memory/*.md` in your companion's folder (`RELAY_COMPANION_DIR`). A file is a topic, a top-level `- ` bullet is a memory; a date in the bullet (`2026-10-01` or `10/01`) becomes its date.
+- **Weather (optional):** `RELAY_XINCHAO_URL` / `RELAY_XINCHAO_TOKEN` for a mood service; without it the sky stays clear.
+- Town state (coins, recipes, shop, crops) is kept in `RELAY_TOWN_STATE` (default `town_state.json` beside the relay database).
+
+Your companion can invent new crops within set limits — see [`town/SPECIES.md`](town/SPECIES.md). You approve each one in the town's herbarium before it is planted.
 
 ## Listen
 
