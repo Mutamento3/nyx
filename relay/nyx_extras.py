@@ -363,7 +363,7 @@ def register(app, g):
                 for k in ("five_hour", "seven_day") if isinstance(rl.get(k), dict)}
 
     # ---- Board: tickets you jot down; the AI claims one before it edits files and closes it after ----
-    board_file, board_lock = data_dir / "board.json", asyncio.Lock()
+    board_file, board_lock = Path(os.environ.get("RELAY_BOARD_FILE") or data_dir / "board.json"), asyncio.Lock()
     BOARD_ST = ("todo", "doing", "done")
 
     def clip(x, n):
@@ -820,17 +820,43 @@ def register(app, g):
                     return {"tool": label, "detail": str(detail)[:60], "since": since}
         return None
 
+    EFFORT_FILE, EFFORT_PENDING = data_dir / "effort_now", data_dir / "effort_pending"   # last effort level typed in / one waiting for an idle moment
+    EFFORT_RE = re.compile(r"\u25cf\s*(low|medium|high|xhigh|max)\s*\u00b7\s*/effort")   # the badge on the pane, it fades after a while
+    WAIT_DEBOUNCE = 45      # auto mode shows a confirm box for a few seconds before it lets the command through; only a box that stays is "waiting"
+    wait_since = {"t": None}
+
     def claude_busy():
         pane = tmux("capture-pane", "-pt", TMUX)
         if pane.returncode != 0:
             return {"state": "offline"}
         lines = [l for l in pane.stdout.rstrip().splitlines() if l.strip()]
         tail = "\n".join(lines[-15:])
-        if any(s in tail for s in PROMPT_MARKS):
-            return {"state": "waiting"}
-        if "esc to interrupt" not in tail:
-            return {"state": "idle"}
-        out = {"state": "busy"}
+        m = EFFORT_RE.search(tail)
+        eff = m.group(1) if m else None
+        if not eff:
+            try:
+                eff = EFFORT_FILE.read_text().strip() or None
+            except Exception:
+                eff = None
+        out = {"effort": eff}
+        # A confirm box replaces the input box at the bottom ("\u2500\u2500 \u276f \u2500\u2500"). Old command output scrolling by can contain the same words,
+        # so if the input box is still there nobody is being asked anything.
+        input_box = any(lines[i].startswith("\u2500\u2500\u2500") and lines[i + 1].startswith("\u276f") and lines[i + 2].startswith("\u2500\u2500\u2500")
+                        for i in range(max(0, len(lines) - 8), len(lines) - 2))
+        if not input_box and any(s in "\n".join(lines[-12:]) for s in PROMPT_MARKS):
+            if wait_since["t"] is None:
+                wait_since["t"] = time.time()
+            if time.time() - wait_since["t"] >= WAIT_DEBOUNCE:
+                out["state"] = "waiting"
+                return out
+        else:
+            wait_since["t"] = None
+        # Newer Claude Code no longer prints "esc to interrupt"; the spinner line ("\u273b Thinking\u2026 (5m 59s \u00b7 ...)") is the sign of a running turn.
+        spinning = any(SPIN_RE.match(l) for l in lines[-20:])
+        if "esc to interrupt" not in tail and not spinning:
+            out["state"] = "idle"
+            return out
+        out["state"] = "busy"
         for l in reversed(lines[-20:]):
             m = SPIN_RE.match(l)
             if m:
@@ -855,7 +881,12 @@ def register(app, g):
             if b.get("tool_since"):
                 b["tool_secs"] = int(now - b["tool_since"])
             return b
-        return await asyncio.to_thread(claude_busy)
+        st = await asyncio.to_thread(claude_busy)
+        try:
+            st["pending_effort"] = EFFORT_PENDING.read_text().strip() or None
+        except Exception:
+            st["pending_effort"] = None
+        return st
 
     @app.post("/app/busy")
     async def busy_post(request: Request):

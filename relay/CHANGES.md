@@ -16,6 +16,11 @@ Based on Tidal Echo by anhe2021212-spec (commit `860e5de`). The original is no l
 - `RELAY_PLUGINS=mod1,mod2`: comma-separated module names, each imported after `nyx_extras` and mounted with `register(app, globals())`. A module that is not found is a warning, not a crash; any other error while importing or registering a plugin stops startup.
 - `/app/send` accepts a message with no text if it carries a `forward`. New in `globals()`: `ai_listening()`, `message_text_by_id()`, `STARTUP_HOOKS` (coroutine functions started at startup).
 
+## Busy and board tweaks (`relay/nyx_extras.py`)
+
+- `GET /app/busy` (Claude Code) now also works with newer Claude Code builds that no longer print "esc to interrupt": a running turn is recognised by the spinner line. It reports `effort` (read from the pane badge, falling back to the last level in `effort_now` next to the database) and `pending_effort` (the level in `effort_pending`, if one is waiting for an idle moment). `waiting` (a confirm box) is only reported once the box has stayed for 45 seconds and the input box is gone, because auto mode flashes the box for a few seconds before letting a command through.
+- `RELAY_BOARD_FILE`: where `board.json` lives (default: next to the database), so several relays can share one board.
+
 ## `relay/nyx_extras.py`（新文件）
 
 Nyx 其他房间要的接口，每个都可以不装，没装的那个只回 503：
