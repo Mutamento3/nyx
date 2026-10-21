@@ -21,6 +21,7 @@ import asyncio
 import mimetypes
 import hmac
 import json
+import logging
 import os
 import re
 import secrets
@@ -95,6 +96,9 @@ if not SECRET:
 # ---------------------------------------------------------------------------
 # storage
 # ---------------------------------------------------------------------------
+
+log = logging.getLogger("uvicorn.error")
+
 
 def now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
@@ -319,6 +323,56 @@ def notification_from_message(msg: dict) -> dict:
 plugin_subs: set[asyncio.Queue] = set()  # AI side    (GET /channel/in)
 app_subs: set[asyncio.Queue] = set()     # human side (GET /app/stream)
 stream_drafts: dict[tuple[str, str], dict] = {}
+
+
+def ai_listening() -> bool:
+    """True when someone will actually read a new message: the API loop, or a window holding /channel/in open."""
+    try:
+        if brain_target() == "loop":
+            return True
+    except Exception:
+        pass
+    return bool(plugin_subs)
+
+
+def message_text_by_id(mid):
+    """(direction, text) of a stored message, or None."""
+    try:
+        with db() as conn:
+            row = conn.execute("SELECT direction, text FROM messages WHERE id = ?", (int(mid),)).fetchone()
+        return (row["direction"], row["text"]) if row else None
+    except Exception:
+        return None
+
+
+# Plugin hooks on the message path. Plugins append functions in their register(app, g):
+#   inbound_meta(body, meta)      sync   /app/send, before the message is saved; edit meta in place
+#   inbound_payload(pl, body)     async  /app/send, before the AI side is notified; return the (new) payload
+#   outbound_meta(body, meta)     sync   /channel/out, before the message is saved; edit meta in place
+#   after_out(kind, text, msg)    sync   /channel/out, after the message is saved
+# Hooks run in registration order; one that raises is logged and skipped.
+HOOKS: dict[str, list] = {"inbound_meta": [], "inbound_payload": [], "outbound_meta": [], "after_out": []}
+# Coroutine functions started at app startup (cancelled at shutdown).
+STARTUP_HOOKS: list = []
+
+
+def run_hooks(name: str, *args) -> None:
+    for fn in list(HOOKS.get(name, [])):
+        try:
+            fn(*args)
+        except Exception as e:
+            log.warning("hook %s %r failed: %s", name, getattr(fn, "__name__", fn), e)
+
+
+async def run_payload_hooks(pl: dict, body: dict) -> dict:
+    for fn in list(HOOKS.get("inbound_payload", [])):
+        try:
+            new = await fn(pl, body)
+            if isinstance(new, dict):
+                pl = new
+        except Exception as e:
+            log.warning("hook inbound_payload %r failed: %s", getattr(fn, "__name__", fn), e)
+    return pl
 
 
 async def broadcast(subs: set, payload: dict) -> None:
@@ -644,6 +698,7 @@ async def lifespan(app: FastAPI):
     init_db()
     # [Nyx] background jobs the extras register (the context-line watcher)
     tasks = [asyncio.create_task(f()) for f in globals().get("NYX_STARTUP", [])]
+    tasks += [asyncio.create_task(f()) for f in STARTUP_HOOKS]
     yield
     for t in tasks:
         t.cancel()
@@ -701,7 +756,9 @@ async def channel_out(request: Request):
         return {"id": target_id, "reactions": reactions}
     text = body.get("text", "")
     meta = {k: v for k, v in body.items() if k not in ("type", "text")}
+    run_hooks("outbound_meta", body, meta)
     msg = save_message("out", kind, text, meta)
+    run_hooks("after_out", kind, text, msg)
     # the AI replied — clear the typing state
     await broadcast(app_subs, {"type": "typing", "active": False})
     await broadcast(app_subs, app_payload(msg))
@@ -725,7 +782,7 @@ async def app_send(request: Request):
     text = (body.get("text") or "").strip()
     attachments = body.get("attachments") if isinstance(body.get("attachments"), list) else []
     api_session = str(body.get("api_session") or body.get("session_id") or "").strip()
-    if not text and not attachments:
+    if not text and not attachments and not body.get("forward"):   # a forwarded chat record may come without text
         raise HTTPException(status_code=400, detail="empty text")
     meta = {"user": "human", "attachments": attachments}
     # [Nyx] quote ({who, text}) and side ("sun" | "moon") from the Nyx chat page
@@ -736,13 +793,15 @@ async def app_send(request: Request):
         meta["side"] = body["side"]
     if api_session:
         meta["api_session"] = api_session
+    run_hooks("inbound_meta", body, meta)
     msg = save_message("in", "user", text, meta)
     # Route to exactly one AI body. "desktop" keeps the Claude Code channel;
     # "loop" calls the optional server-side API loop.
     if brain_target() == "loop":
         asyncio.create_task(forward_to_loop(msg))
     else:
-        await broadcast(plugin_subs, plugin_payload(msg))
+        pl = await run_payload_hooks(plugin_payload(msg), body)
+        await broadcast(plugin_subs, pl)
     # echo to the PWA so the sender's bubble + other tabs stay in sync
     await broadcast(app_subs, app_payload(msg))
     # the AI starts processing — push a typing state to the PWA
@@ -1075,6 +1134,14 @@ _group_out = None   # set by nyx_group when this relay is in a group
 # [Nyx] attic, listen-together, Clawd, usage — see nyx_extras.py
 import nyx_extras  # noqa: E402
 nyx_extras.register(app, globals())
+
+# Optional extra plugins: RELAY_PLUGINS=mod1,mod2 -> each module's register(app, globals()), after nyx_extras.
+import importlib  # noqa: E402
+for _name in [n.strip() for n in os.environ.get("RELAY_PLUGINS", "").split(",") if n.strip()]:
+    try:
+        importlib.import_module(_name).register(app, globals())
+    except ModuleNotFoundError as _e:
+        log.warning("RELAY_PLUGINS: module %r not found (%s), skipped", _name, _e)
 
 
 if __name__ == "__main__":

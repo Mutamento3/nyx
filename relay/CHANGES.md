@@ -10,6 +10,12 @@ Based on Tidal Echo by anhe2021212-spec (commit `860e5de`). The original is no l
 3. 文件末尾挂上 `nyx_extras.py`。
 4. 启动时把 `nyx_extras.py` 登记的后台任务（压缩线巡查）跑起来。
 
+## Plugin hooks on the message path (`relay/app.py`)
+
+- `HOOKS` (in `globals()`): `inbound_meta(body, meta)`, `inbound_payload(pl, body)` (async), `outbound_meta(body, meta)`, `after_out(kind, text, msg)`. Plugins append functions in their `register(app, g)`; they run in registration order, and a hook that raises is logged and skipped instead of breaking the message.
+- `RELAY_PLUGINS=mod1,mod2`: comma-separated module names, each imported after `nyx_extras` and mounted with `register(app, globals())`. A missing module is a warning, not a crash.
+- `/app/send` accepts a message with no text if it carries a `forward`. New in `globals()`: `ai_listening()`, `message_text_by_id()`, `STARTUP_HOOKS` (coroutine functions started at startup).
+
 ## `relay/nyx_extras.py`（新文件）
 
 Nyx 其他房间要的接口，每个都可以不装，没装的那个只回 503：
