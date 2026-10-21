@@ -99,6 +99,11 @@ It sets up a small Python venv the first time and prints an address with a key; 
 
 Your companion can invent new crops within set limits — see [`town/SPECIES.md`](town/SPECIES.md). You approve each one in the town's herbarium before it is planted.
 
+### Next: Hesperides 1.3.0 (planned, 2026-10-21)
+
+- **The timeline tree.** An old tree in the town square, grown from the same memories as the houses. Every memory is both a leaf on the tree and a window in a house. Leaves sit along the branches by date, oldest near the roots, newest at the top; a branch is one stretch of time (a day, a week or a month, depending on how long the town has been growing, never more than about nine branches). Tap a window and its leaf lights up on the tree; tap a branch and every window from that stretch lights up across the town, so you can see what that time went into. The tree shows *when*, the houses show *what*.
+- **The companion's gallery.** A museum by the square, in each of the three styles, hung with works your companion stopped at while browsing open museum collections: the image, the museum's label, a short handwritten note on why it stopped there, and a line for you to answer under it. Public-domain works by default; anything still under copyright is marked to stay on your own server.
+
 ## Contacts
 
 One install is one companion. To talk to another (a Codex next to your Claude, a second persona), give it its own relay, then on Contacts tap **＋ 添一个** and enter its address and key. The list lives on your phone.
