@@ -186,6 +186,13 @@ def history(since: int, limit: int) -> list:
     return rows_to_messages(rows)
 
 
+def history_tail(n: int) -> list:
+    """The newest n messages, oldest first."""
+    with db() as conn:
+        rows = conn.execute("SELECT * FROM messages ORDER BY id DESC LIMIT ?", (n,)).fetchall()
+    return rows_to_messages(list(reversed(rows)))
+
+
 def history_for_session(session_id: str, since: int, limit: int) -> list:
     session_id = (session_id or "").strip()
     if not session_id:
@@ -984,8 +991,11 @@ async def app_status(request: Request):
 
 
 @app.get("/app/history")
-async def app_history(request: Request, since: int = 0, limit: int = 200, session_id: str = ""):
+async def app_history(request: Request, since: int = 0, limit: int = 200, session_id: str = "", tail: int = 0):
+    """since/limit page forward from the oldest. tail=N (when since is not given) returns the newest N instead."""
     check_auth(request)
+    if tail > 0 and since <= 0 and not session_id:
+        return {"messages": [app_payload(m) for m in history_tail(min(tail, 500))]}
     rows = history_for_session(session_id, since, min(limit, 500)) if session_id else history(since, min(limit, 500))
     return {"messages": [app_payload(m) for m in rows]}
 

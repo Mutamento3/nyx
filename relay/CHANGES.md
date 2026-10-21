@@ -20,6 +20,7 @@ Based on Tidal Echo by anhe2021212-spec (commit `860e5de`). The original is no l
 
 - `GET /app/busy` (Claude Code) now also works with newer Claude Code builds that no longer print "esc to interrupt": a running turn is recognised by the spinner line. It reports `effort` (read from the pane badge, falling back to the last level in `effort_now` next to the database) and `pending_effort` (the level in `effort_pending`, if one is waiting for an idle moment). `waiting` (a confirm box) is only reported once the box has stayed for 45 seconds and the input box is gone, because auto mode flashes the box for a few seconds before letting a command through.
 - `RELAY_BOARD_FILE`: where `board.json` lives (default: next to the database), so several relays can share one board.
+- `GET /app/history?tail=N` (`relay/app.py`): the newest N messages, oldest first. `since=0` returns the oldest 200, so a long chat never reached its recent part. `since`/`limit` behave as before and win when `since` is given.
 
 ## `relay/nyx_extras.py`（新文件）
 
