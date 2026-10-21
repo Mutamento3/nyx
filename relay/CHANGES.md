@@ -12,8 +12,8 @@ Based on Tidal Echo by anhe2021212-spec (commit `860e5de`). The original is no l
 
 ## Plugin hooks on the message path (`relay/app.py`)
 
-- `HOOKS` (in `globals()`): `inbound_meta(body, meta)`, `inbound_payload(pl, body)` (async), `outbound_meta(body, meta)`, `after_out(kind, text, msg)`. Plugins append functions in their `register(app, g)`; they run in registration order, and a hook that raises is logged and skipped instead of breaking the message.
-- `RELAY_PLUGINS=mod1,mod2`: comma-separated module names, each imported after `nyx_extras` and mounted with `register(app, globals())`. A missing module is a warning, not a crash.
+- `HOOKS` (in `globals()`): `inbound_meta(body, meta)`, `plugin_payload(pl, msg)` (sync, runs inside `plugin_payload()` so live messages, voice, uploads and the `/channel/in` backfill all pass through it), `inbound_payload(pl, body)` (async, `/app/send` live only), `outbound_meta(body, meta)`, `after_out(kind, text, msg)`. Plugins append functions in their `register(app, g)`; they run in registration order, and a hook that raises is logged and skipped instead of breaking the message.
+- `RELAY_PLUGINS=mod1,mod2`: comma-separated module names, each imported after `nyx_extras` and mounted with `register(app, globals())`. A module that is not found is a warning, not a crash; any other error while importing or registering a plugin stops startup.
 - `/app/send` accepts a message with no text if it carries a `forward`. New in `globals()`: `ai_listening()`, `message_text_by_id()`, `STARTUP_HOOKS` (coroutine functions started at startup).
 
 ## `relay/nyx_extras.py`（新文件）

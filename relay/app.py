@@ -347,11 +347,13 @@ def message_text_by_id(mid):
 
 # Plugin hooks on the message path. Plugins append functions in their register(app, g):
 #   inbound_meta(body, meta)      sync   /app/send, before the message is saved; edit meta in place
-#   inbound_payload(pl, body)     async  /app/send, before the AI side is notified; return the (new) payload
+#   plugin_payload(pl, msg)       sync   inside plugin_payload(): every message sent to the AI (live, voice, upload,
+#                                        /channel/in backfill); edit pl in place, e.g. build the content text
+#   inbound_payload(pl, body)     async  /app/send only, live, before the AI side is notified; return the (new) payload
 #   outbound_meta(body, meta)     sync   /channel/out, before the message is saved; edit meta in place
 #   after_out(kind, text, msg)    sync   /channel/out, after the message is saved
 # Hooks run in registration order; one that raises is logged and skipped.
-HOOKS: dict[str, list] = {"inbound_meta": [], "inbound_payload": [], "outbound_meta": [], "after_out": []}
+HOOKS: dict[str, list] = {"inbound_meta": [], "plugin_payload": [], "inbound_payload": [], "outbound_meta": [], "after_out": []}
 # Coroutine functions started at app startup (cancelled at shutdown).
 STARTUP_HOOKS: list = []
 
@@ -404,13 +406,15 @@ def plugin_payload(msg: dict) -> dict:
         content = f"（引用{q.get('who') or ''}：「{q['text']}」）\n{content}"
     if meta.get("side") == "moon" and NIGHT_MARK:
         content = NIGHT_MARK + content
-    return {
+    pl = {
         "id": msg["id"],
         "content": content,
         "user": meta.get("user") or "human",
         "ts": msg["ts"],
         "attachments": meta.get("attachments") or [],
     }
+    run_hooks("plugin_payload", pl, msg)   # plugins shape the text every path sends to the AI (live, voice, upload, backfill)
+    return pl
 
 
 def brain_target() -> str:
@@ -1141,7 +1145,9 @@ for _name in [n.strip() for n in os.environ.get("RELAY_PLUGINS", "").split(",") 
     try:
         importlib.import_module(_name).register(app, globals())
     except ModuleNotFoundError as _e:
-        log.warning("RELAY_PLUGINS: module %r not found (%s), skipped", _name, _e)
+        if _e.name != _name:
+            raise   # the plugin itself is missing one of its imports: fail loudly
+        log.warning("RELAY_PLUGINS: module %r not found, skipped", _name)
 
 
 if __name__ == "__main__":
