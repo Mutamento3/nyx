@@ -12,7 +12,7 @@
   // the tree in a 390 × 844 frame (scaled to the screen), after Yan's tree.mjs
   function grow(night) {
     var W = 390, H = 844, rnd = seeded(7), UPR = -Math.PI / 2 + .3, P = [];   // the first version's bones: it looked most like a tree
-    function branch(x, y, ang, len, w, z, tier, maxTier, parent) {
+    function branch(x, y, ang, len, w, z, tier, maxTier, parent, fork) {
       var pts = [[x, y]], a = ang, cx = x, cy = y, n = 14;
       for (var i = 1; i <= n; i++) {
         // a little wander; the wind carries only the trunk and the big limbs up and right — from the second tier on,
@@ -22,7 +22,7 @@
         if (cx < 60) a += (UPR - a) * .25; if (cx > W - 70) a -= .12;
         cx += Math.cos(a) * len / n; cy += Math.sin(a) * len / n; pts.push([cx, cy]);
       }
-      var me = { pts: pts, w0: w, w1: w * (tier === 0 ? .22 : .5), z: z, tier: tier, parent: parent, kids: [] };
+      var me = { pts: pts, w0: w, w1: w * (tier === 0 ? .22 : .5), z: z, tier: tier, parent: parent, fork: fork, kids: [] };
       // after Dora Lazarevic's Europe: the trunk is solid ink, limbs taper fast, twigs are pen hairlines
       if (tier === 1) me.w1 = 2; else if (tier >= 2) { me.w0 = 1.15; me.w1 = .7; }
       P.push(me); if (parent) parent.kids.push(me);
@@ -34,10 +34,11 @@
         var na = a + side * (.5 + rnd() * .3) * (side < 0 ? .75 : 1);
         me.at = me.at || []; me.at.push(j);
         ends.push.apply(ends, branch(bx, by, na, len * (tier === 0 ? .6 : .62), wl * (tier === 0 ? .62 : .66),
-          Math.max(-1, Math.min(1, z + (rnd() - .5) * .9)), tier + 1, maxTier, me));
+          Math.max(-1, Math.min(1, z + (rnd() - .5) * .9)), tier + 1, maxTier, me, j));
       }
       if (tier < 2 && me.at) {   // the parent stops at its last fork; the last child carries on from there (no stub, Yan)
-        var last = Math.max.apply(null, me.at); me.pts = pts.slice(0, last + 1); me.w1 = w + (me.w1 - w) * last / n;
+        var last = Math.max.apply(null, me.at); me.pts = pts.slice(0, last + 1);
+        me.w1 = me.kids[me.kids.length - 1].w0;   // and thins down to the twig that carries on, so the ink doesn't stop in a flat cut (唯)
       }
       return [{ x: cx, y: cy, a: a, b: me }].concat(ends);
     }
@@ -110,8 +111,17 @@
     }
     // a point on branch b, moved by tilt and wind according to its depth
     function at(b, p, k, n, tt) {
+      var d = shift(b, k, n, tt);
+      return [OX + (p[0] + d[0]) * S, OY + (p[1] + d[1]) * S];
+    }
+    // how far tilt and wind move point k of b. A twig's base rides the spot on its parent where it forks off and only
+    // takes on its own depth and sway towards the tip, so joints never come apart when the tree moves (唯 saw them break)
+    function shift(b, k, n, tt) {
       var z = b.z, sway = still ? 0 : Math.sin(tt * (.5 + (z + 1) * .25) + b.pts[0][0] * .02) * (1.5 + (z + 1) * 2.2) * Math.pow(k / n, 1.6) * (b.root ? 0 : 1);
-      return [OX + (p[0] + tilt[0] * z * 12 + sway) * S, OY + (p[1] + tilt[1] * z * 8) * S];
+      var own = [tilt[0] * z * 12 + sway, tilt[1] * z * 8];
+      if (!b.parent) return own;
+      var pn = b.parent.pts.length - 1, base = shift(b.parent, Math.min(b.fork, pn), pn, tt), u = n ? k / n : 1;
+      return [base[0] + (own[0] - base[0]) * u, base[1] + (own[1] - base[1]) * u];
     }
     // ink mixed into the paper colour, fully opaque: where branches overlap at a joint there is no darker seam
     function ink(op) {
