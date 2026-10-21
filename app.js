@@ -449,6 +449,20 @@
   document.addEventListener("pointerdown", function (e) { if ($("fan").classList.contains("open") && !e.target.closest("#fan, #orb")) fan(false); });
   setInterval(function () { if (!document.hidden && !$("room").hidden) loadMeter(); }, 60000);
 
+  // the newest 200 messages: one request on a relay that knows ?tail=; an older relay pages from the start, so page forward to the end and keep the last 200
+  function latest() {
+    return api("/app/history?tail=200&limit=200").then(function (d) {
+      var all = d.messages || [];
+      if (all.length < 200) return { messages: all };
+      function more(since) {
+        return api("/app/history?since=" + since + "&limit=500").then(function (n) {
+          var got = n.messages || []; all = all.concat(got).slice(-200);
+          return got.length === 500 ? more(got[got.length - 1].id) : { messages: all };
+        });
+      }
+      return more(all[all.length - 1].id);
+    });
+  }
   /* ---------- gate ---------- */
   function backHome() {   // the picked contact's key stopped working: fall back to the first companion instead of locking the door
     ["nyx_relay", "nyx_chat_key", "nyx_ai"].forEach(function (x) { try { localStorage.removeItem(x); } catch (e) {} });
@@ -457,7 +471,7 @@
   function enter(k) {
     hkey = k; key = RELAY === HOME ? k : (ls("nyx_chat_key") || k);
     return (RELAY === HOME ? Promise.resolve() : hapi("/app/status")).then(function () {
-      return api("/app/history?limit=200").catch(function (e) { if (e.auth && RELAY !== HOME) { backHome(); return api("/app/history?limit=200"); } throw e; });
+      return latest().catch(function (e) { if (e.auth && RELAY !== HOME) { backHome(); return latest(); } throw e; });
     }).then(function (d) {
       try { localStorage.setItem("nyx_key", k); } catch (e) {}
       try {   // the first contact's key follows the door's, or a tap there would hand the old one back
