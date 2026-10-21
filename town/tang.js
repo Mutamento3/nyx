@@ -2,7 +2,7 @@
 // 每栋房子正面朝 +z，地面 y=0。三栋样板：大殿、楼阁、院落，平面、屋顶、开窗各不一样。
 import * as THREE from 'three';
 import { mat, washTex } from './shop/look.js';
-import { C, box, at, tree } from './shop/house.js';
+import { C, box, at, tree, DECOR } from './shop/house.js';
 import { memWindow, vine, ruin, glowOf } from './mem.js';
 
 // 石青沉、石青、群青、金蓝、泥金箔；墙不用这几个深色，用带一点青的米白，深色只上瓦、柱、窗棂，金只描边
@@ -296,28 +296,31 @@ export function willow(h = 1.8, seed = 1) {
 }
 
 // 你的店 · 唐风：临街一间茶铺，两层，一楼敞开的柜台，门口挑一面写字的布幌子，檐下一串红灯笼
-export function teashop(sign) {
+export function teashop(sign, dec = {}) {
+  // the owner's decor: storefront colour on the cloth sign, awning on the lanterns, a light wall tint. Default is a stone-blue sign and red lanterns
+  const flagC = dec.base && dec.base !== '墨绿' && DECOR.base[dec.base] || '#2D5A7C', lampC = dec.awning && dec.awning !== '黄白' && DECOR.awning[dec.awning]?.[0] || '#c8402c';
+  const wallT = dec.wall && dec.wall !== '奶油' && DECOR.wall[dec.wall], tint = (m) => { if (wallT) m.color.set('#ffffff').lerp(new THREE.Color(wallT), .7); return m; };
   const g = new THREE.Group(), W = 2.2, D = 1.7;
   g.add(platform(W + .4, D + .4, .16));
-  const b0 = box(W, 1.0, D, mat('#ffffff', { map: washTex(P.wall, { seed: 121, blots: 22 }) })); b0.position.y = .16 + .5; g.add(b0);
+  const b0 = box(W, 1.0, D, tint(mat('#ffffff', { map: washTex(P.wall, { seed: 121, blots: 22 }) }))); b0.position.y = .16 + .5; g.add(b0);
   const counter = box(W - .5, .4, .08, P.wood); counter.position.set(-.15, .16 + .2, D / 2 + .04); g.add(counter);
   const open = box(W - .5, .5, .02, mat('#3a2a20', { emissive: new THREE.Color('#e0a050'), emissiveIntensity: .35 })); open.position.set(-.15, .16 + .68, D / 2 + .005); open.userData.noLine = true; g.add(open);
   for (let i = 0; i < 4; i++) { const cup = new THREE.Mesh(new THREE.CylinderGeometry(.04, .03, .06, 8), mat('#f4efe2')); cup.position.set(-.7 + i * .3, .16 + .43, D / 2 + .05); g.add(cup); }
   columns(g, [-W / 2, W / 2], D / 2 + .06, .16, 1.0, .5);
   const skirt = hipRoof(W, D, .2, { over: .3, ridge: false, lift: .08 }); skirt.position.y = .16 + 1.08; g.add(skirt);
-  const b1 = box(W - .4, .75, D - .4, mat('#ffffff', { map: washTex(P.wall, { seed: 123, blots: 18 }) })); b1.position.y = .16 + 1.3 + .375; g.add(b1);
+  const b1 = box(W - .4, .75, D - .4, tint(mat('#ffffff', { map: washTex(P.wall, { seed: 123, blots: 18 }) }))); b1.position.y = .16 + 1.3 + .375; g.add(b1);
   for (const x of [-.45, .45]) { const w = latticeWindow(.42, .4, { on: true }); w.position.set(x, .16 + 1.45, (D - .4) / 2 + .005); g.add(w); }
   const rf = hipRoof(W - .4, D - .4, .6, { over: .38 }); rf.position.y = .16 + 2.07; g.add(rf);
   const gl = box(W - .3, .025, D - .3, P.gilt); gl.position.y = .16 + 2.06; gl.userData.lineW = .003; g.add(gl);
   // 布幌子：一根竹竿斜挑出来，挂一条长布，写店名
   const pole = new THREE.Mesh(new THREE.CylinderGeometry(.018, .018, 1.1, 6), mat('#8a7a50')); pole.position.set(W / 2 + .25, 1.45, D / 2 - .2); pole.rotation.z = -.5; g.add(pole);
   const cv = document.createElement('canvas'); cv.width = 64; cv.height = 256; const x = cv.getContext('2d');
-  x.fillStyle = '#2D5A7C'; x.fillRect(0, 0, 64, 256); x.strokeStyle = '#E8C870'; x.lineWidth = 3; x.strokeRect(4, 4, 56, 248);
+  x.fillStyle = flagC; x.fillRect(0, 0, 64, 256); x.strokeStyle = '#E8C870'; x.lineWidth = 3; x.strokeRect(4, 4, 56, 248);
   x.fillStyle = '#f4efe2'; x.font = '600 40px "Noto Serif SC", serif'; x.textAlign = 'center'; x.textBaseline = 'middle';
   const name = ((sign && sign[0]) || '茶').slice(0, 4); [...name].forEach((ch, i) => x.fillText(ch, 32, 256 / (name.length + 1) * (i + 1)));
   const tx = new THREE.CanvasTexture(cv); tx.colorSpace = THREE.SRGBColorSpace;
   const flag = new THREE.Mesh(new THREE.PlaneGeometry(.26, 1.0), mat('#ffffff', { map: tx, side: THREE.DoubleSide })); flag.position.set(W / 2 + .5, 1.3, D / 2 - .2); flag.rotation.y = -.3; flag.userData.noLine = true; g.add(flag);
-  for (let i = 0; i < 3; i++) { const l = new THREE.Mesh(new THREE.SphereGeometry(.08, 10, 8), mat('#c8402c', { emissive: new THREE.Color('#e06030'), emissiveIntensity: .5 })); l.scale.y = 1.25; l.position.set(-.7 + i * .7, .16 + 1.0, D / 2 + .3); g.add(l); const k = box(.02, .1, .02, P.gilt); k.position.set(-.7 + i * .7, .16 + 1.13, D / 2 + .3); k.userData.noLine = true; g.add(k); }
+  for (let i = 0; i < 3; i++) { const l = new THREE.Mesh(new THREE.SphereGeometry(.08, 10, 8), mat(lampC, { emissive: new THREE.Color(lampC).lerp(new THREE.Color('#e08040'), .4), emissiveIntensity: .5 })); l.scale.y = 1.25; l.position.set(-.7 + i * .7, .16 + 1.0, D / 2 + .3); g.add(l); const k = box(.02, .1, .02, P.gilt); k.position.set(-.7 + i * .7, .16 + 1.13, D / 2 + .3); k.userData.noLine = true; g.add(k); }
   return g;
 }
 

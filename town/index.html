@@ -183,13 +183,13 @@ for (const [w, d] of HAR ? [[1.1, 15.6]] : [[1.1, N * 2 - .4], [N * 2 - .4, 1.1]
   if (HAR) {   // 海峡横穿竖街：街面换成一条贴地的带子，碰到水道那几格不铺，留给桥
     rd.visible = false; const g3 = new THREE.PlaneGeometry(w, d, 1, Math.round(d * 5)); g3.rotateX(-Math.PI / 2); g3.translate(0, .03, -2);
     const ps = g3.attributes.position, ix = g3.index.array, keep = []; for (let k = 0; k < ix.length; k += 3) if (![ix[k], ix[k + 1], ix[k + 2]].some((v) => nearRiver(ps.getX(v), ps.getZ(v), .05))) keep.push(ix[k], ix[k + 1], ix[k + 2]);
-    g3.setIndex(keep); const r3 = new THREE.Mesh(g3, stoneM); r3.userData.noLine = true; townOnly.add(r3);
+    g3.setIndex(keep); const r3 = new THREE.Mesh(g3, roadM);   /* the street uses the pushed-forward road material, or it fights the paving and flickers away at a distance */ r3.userData.noLine = true; townOnly.add(r3);
   } }
 if (HAR) {   // 圣托里尼的横街：顺着坡往西爬，坡上那段每隔一点压一道白台阶边；东头到崖边为止
   const x0 = -9.8, x1 = COASTX(0) - .5, g2 = new THREE.PlaneGeometry(x1 - x0, 1.1, Math.round((x1 - x0) * 3), 1); g2.rotateX(-Math.PI / 2);
   const ps = g2.attributes.position; for (let i = 0; i < ps.count; i++) ps.setY(i, gy(ps.getX(i) + (x0 + x1) / 2, ps.getZ(i)) + .02); g2.computeVertexNormals();
   { const ix = g2.index.array, keep = []; for (let k = 0; k < ix.length; k += 3) if (![ix[k], ix[k + 1], ix[k + 2]].some((v) => nearRiver(ps.getX(v) + (x0 + x1) / 2, ps.getZ(v), .05))) keep.push(ix[k], ix[k + 1], ix[k + 2]); g2.setIndex(keep); }   // 横街过海峡那一截也空出来
-  const rd2 = new THREE.Mesh(g2, stoneM); rd2.position.x = (x0 + x1) / 2; rd2.userData.noLine = true; townOnly.add(rd2);
+  const rd2 = new THREE.Mesh(g2, roadM); rd2.position.x = (x0 + x1) / 2; rd2.userData.noLine = true; townOnly.add(rd2);
   for (let x = -5.2; x > -9.8; x -= .32) { const st = new THREE.Mesh(new THREE.BoxGeometry(.05, .03, 1.1), mat('#ffffff')); st.position.set(x, gy(x, 0) + .03, 0); st.userData.noLine = true; townOnly.add(st); }
 }
 if (HAR) {   // 河：底下一圈白石沿，上面一条蓝水，顺着弧走；街过河的地方架一座白拱小桥
@@ -206,12 +206,13 @@ if (HAR) {   // 河：底下一圈白石沿，上面一条蓝水，顺着弧走�
   const BANKW = (i, n) => .5 * RIVW(i, n) - .45;   // 岸墙往水里收半格，挖地那一圈锯齿藏在墙后面
   window.__riverWater = ribbon((i, n) => BANKW(i, n) + .08 + FLARE(i, n), () => -.5, mat('#a6d4f2', { transparent: true, opacity: .9, side: THREE.FrontSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }));   // 比岸墙宽一点，墙脚泡在水里；两头出海口跟着 FLARE 张开；只画正面，出海口拐弯处有个三角翻过去，画反面就是一道黑梭子；颜色等外面的海建好再跟湖水走
   RIVERBANK = (H) => {   // 两岸：岸上有地的那一侧才砌墙、压一道白石沿；到了海里就没了
-    const n = RIVP.length - 1, side = [1, -1].map((sd) => RIVP.map((p, i) => { const t = RIVERC.getTangentAt(i / n), w = BANKW(i, n) + .2, x = p.x - t.z * w * sd, z = p.z + t.x * w * sd, w2 = .5 * RIVW(i, n) + .7, xo = p.x - t.z * w2 * sd, zo = p.z + t.x * w2 * sd, wx = p.x - t.z * BANKW(i, n) * sd, wz = p.z + t.x * BANKW(i, n) * sd; return SEA(x, z) || wx - COASTX(wz) > -.15 || SEA(xo, zo) || H(xo, zo) < -.3 ? null : Math.max(0, gy(x, z)); }));   /* 东口岸墙砌到海里去了。墙脚过了海岸线、或者这一侧外面没地，就不砌 */   // 岸顶按街面算，不按挖过的地皮
+    const n = RIVP.length - 1, side = [1, -1].map((sd) => RIVP.map((p, i) => { const t = RIVERC.getTangentAt(i / n), w = BANKW(i, n) + .2, x = p.x - t.z * w * sd, z = p.z + t.x * w * sd, w2 = .5 * RIVW(i, n) + FLARE(i, n) + .7,   /* measure past the wider dig at the river mouths, or a stretch of bank goes missing */ xo = p.x - t.z * w2 * sd, zo = p.z + t.x * w2 * sd, wx = p.x - t.z * BANKW(i, n) * sd, wz = p.z + t.x * BANKW(i, n) * sd; return SEA(x, z) || wx - COASTX(wz) > -.15 || SEA(xo, zo) || H(xo, zo) < -.3 ? null : Math.max(0, gy(x, z)); }));   /* 东口岸墙砌到海里去了。墙脚过了海岸线、或者这一侧外面没地，就不砌 */   // 岸顶按街面算，不按挖过的地皮
     const wallM = mat('#ece8de', { side: THREE.DoubleSide }), capM = mat('#f6f4ee', { side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
     [1, -1].forEach((sd, k) => {
       const top = side[k], pos = [], idx = [], cap = [], cidx = [];
       RIVP.forEach((p, i) => { const t = RIVERC.getTangentAt(i / n), nx = -t.z * sd, nz = t.x * sd, w = BANKW(i, n), y = (top[i] ?? -.5) + .03, x0 = p.x + nx * w, z0 = p.z + nz * w;
-        pos.push(x0, y, z0, x0, -.7, z0); cap.push(x0 - nx * .02, y + .01, z0 - nz * .02, x0 + nx * .75, y + .01, z0 + nz * .75);   /* 白石沿加宽到盖过石板那一格锯齿 */
+        pos.push(x0, y, z0, x0, -.7, z0); const cw = .5 + FLARE(i, n);   /* the paving now runs up to the wall, so a narrow white edge is enough and doesn't fold over the water on tight bends */
+        cap.push(x0 - nx * .02, y + .01, z0 - nz * .02, x0 + nx * cw, y + .01, z0 + nz * cw);   /* 白石沿加宽到盖过石板那一格锯齿 */
         if (i && top[i] != null && top[i - 1] != null) { const a = i * 2 - 2; idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2); cidx.push(a, a + 2, a + 1, a + 1, a + 2, a + 3); } });
       const wg = new THREE.BufferGeometry(); wg.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); wg.setIndex(idx); wg.computeVertexNormals();
       const wm = new THREE.Mesh(wg, wallM); wm.userData.noLine = true; townOnly.add(wm);   // 白石岸墙，从岸沿一直落到水下
@@ -255,7 +256,7 @@ const SHX = HAR ? 3.0 : 4.7, SHZ = HAR ? -4.9 : -4.5;   // 圣托里尼东边是
 let SHOP = DATA?.town?.shop || { type: 'cafe', dec: {}, sign: null, owned: [] }, cafe = null;
 function placeShop(fresh) {
   if (cafe) town.remove(cafe);
-  if (SHOP.type === 'cafe' && (TANG || HAR)) cafe = put(TANG ? TG.teashop(SHOP.sign) : HB.shop(SHOP.sign), SHX, SHZ, 0, 1);   // 黄墙红棚在唐风港口里突兀，各风格一栋自己的店
+  if (SHOP.type === 'cafe' && (TANG || HAR)) cafe = put(TANG ? TG.teashop(SHOP.sign, SHOP.dec) : HB.shop(SHOP.sign, SHOP.dec), SHX, SHZ, 0, 1);   // 黄墙红棚在唐风港口里突兀，各风格一栋自己的店
   else if (SHOP.type === 'cafe' || !F[{ paris: 'paris', farm: 'farmhouse', tower: 'tower' }[SHOP.type]]) {
     cafe = put(buildHouse({ ...SHOP.dec, ...(SHOP.sign ? { sign: SHOP.sign } : {}) }), SHX, SHZ, 0, .82);
     cafe.position.y = .05;   // 店的石台顶面和镇上地面贴平了会抢着画，一动就频闪：抬一点
@@ -659,16 +660,21 @@ if (PAVED) {   // 唐风：方块地铺青石板；港口：灰白圆石子。�
       for (let x = cx - hw + .8; x < cx + hw; x += 2.4) if (Math.abs(x) > 3.6) { const b = new THREE.Mesh(new THREE.CylinderGeometry(.06, .07, .22, 8), mat(HB.P.iron)); b.position.set(x, .13, sz * (RW + .12)); townOnly.add(b); }
     }
   }
+  // by the river, a paving square isn't dropped whole (that left blue steps along the bank): its corners in the water are pulled back onto the wall line
+  const wallR = (i) => .5 * RIVW(i, RIVP.length - 1) - .45;
+  const inBank = (x, z) => RIVP.some((p, i) => Math.hypot(p.x - x, p.z - z) < wallR(i));
+  const toBank = (x, z) => { let best = 0, bp = null, bi = 0; RIVP.forEach((p, i) => { const d = wallR(i) - Math.hypot(p.x - x, p.z - z); if (d > best) { best = d; bp = p; bi = i; } });
+    if (!bp) return [x, z]; const dx = x - bp.x, dz = z - bp.z, d = Math.hypot(dx, dz) || 1, r = wallR(bi) + .02; return [bp.x + dx / d * r, bp.z + dz / d * r]; };
   {   // 街区和街区之间那几道缝：贴着地形补铺一层，离街区一米多以内、不是水的地方都铺上
     const H = land.userData.heightAt, inR = (x, z, pad) => RECTS.some(([cx, cz, hw, hd]) => Math.abs(x - cx) < hw + pad && Math.abs(z - cz) < hd + pad);
     const xs = RECTS.map((r) => [r[0] - r[2], r[0] + r[2]]).flat(), zs = RECTS.map((r) => [r[1] - r[3], r[1] + r[3]]).flat();
     const x0 = Math.min(...xs) - 1.5, x1 = Math.max(...xs) + 1.5, z0 = Math.min(...zs) - 1.5, z1 = Math.max(...zs) + 1.5, st = .25;
-    const pos = [], uv = [], idx = [], vid = new Map(), V = (x, z) => { const k = x + ',' + z; if (!vid.has(k)) { vid.set(k, pos.length / 3); if (SEA(x, z)) x = COASTX(z) - .03; pos.push(x, Math.max(H(x, z), HAR ? gy(x, z) : 0) + .012, z); uv.push(x / 1.6, -z / 1.6); } return vid.get(k); };
+    const pos = [], uv = [], idx = [], vid = new Map(), V = (x, z) => { const k = x + ',' + z; if (!vid.has(k)) { vid.set(k, pos.length / 3); if (SEA(x, z)) x = COASTX(z) - .03; else if (RIVERC) [x, z] = toBank(x, z); pos.push(x, Math.max(H(x, z), HAR ? gy(x, z) : 0) + .012, z); uv.push(x / 1.6, -z / 1.6); } return vid.get(k); };
     for (let x = x0; x < x1; x += st) for (let z = z0; z < z1; z += st) {
       const cx2 = x + st / 2, cz2 = z + st / 2;
       if (!inR(cx2, cz2, 2.2)) continue;   // 街区里面和街区之间一张铺到底，离太远的是乡下
       const cs = [[x, z], [x + st, z], [x, z + st], [x + st, z + st]];
-      if (cs.every(([a, b]) => SEA(a, b)) || cs.some(([a, b]) => !SEA(a, b) && H(a, b) < -.35 || RIVERC && nearRiver(a, b, .1))) continue;   // 崖边那一格：伸到海里的角拉回到海岸线上，边就顺着岸走，不是一级级的台阶
+      if (cs.every(([a, b]) => SEA(a, b)) || cs.some(([a, b]) => !SEA(a, b) && H(a, b) < -.35 && !(RIVERC && nearRiver(a, b, .7))) || RIVERC && cs.every(([a, b]) => inBank(a, b))) continue;   // 崖边那一格：伸到海里的角拉回到海岸线上，边就顺着岸走，不是一级级的台阶
       const a = V(+x.toFixed(2), +z.toFixed(2)), b = V(+(x + st).toFixed(2), +z.toFixed(2)), c = V(+x.toFixed(2), +(z + st).toFixed(2)), d = V(+(x + st).toFixed(2), +(z + st).toFixed(2));
       idx.push(a, c, b, b, c, d);
     }
@@ -1029,13 +1035,13 @@ function showKitchen(sel = []) {
   };
 }
 // 装修她的店：默认那套不要钱，别的拿念换；买过的随便换回来
-const SHOP_N = { type: '房型', wall: '楼上的墙', base: '一楼门面', awning: '遮阳篷', ivy: '爬山虎', stall: '门口小摊' };
+const SHOP_N = { type: '房型', wall: '楼上的墙', base: '一楼门面', awning: '遮阳篷', ivy: '爬山虎', stall: '门口小摊' , ...(HAR ? { wall: '墙', base: '圆顶和门', awning: '阳伞', ivy: '三角梅' } : TANG ? { wall: '墙', base: '布幌子', awning: '灯笼' } : {}) };
 const TYPE_ZH = { cafe: '街角小店', paris: '巴黎公寓', farm: '普罗旺斯农舍', tower: '街角塔楼' }, IVY_ZH = ['不爬', '一点', '半面墙', '爬满'];
 const DEF_DEC = { wall: '奶油', base: '墨绿', awning: '黄白', ivy: 0, stall: '不摆' };
 const shopApi = (body) => fetch(REL + '/app/memtown/shop', { method: 'POST', headers: { Authorization: 'Bearer ' + SECRET, 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then((r) => r.json());
 function showShop(msg = '') {
   const PR = T.prices || {}, cur = (c) => c === 'type' ? SHOP.type : String(SHOP.dec[c] ?? DEF_DEC[c]);
-  const cats = SHOP.type === 'cafe' ? Object.keys(SHOP_N) : ['type'];
+  const cats = SHOP.type !== 'cafe' ? ['type'] : Object.keys(SHOP_N).filter((c) => !(PAVED && c === 'stall') && !(TANG && c === 'ivy'));   // the harbour and Tang shops take the colours too; there's no stall on them, and the tea house grows no ivy
   const lab = (c, v) => c === 'type' ? TYPE_ZH[v] : c === 'ivy' ? IVY_ZH[+v] : v;
   show(`<h2>你的店<em>念 ${T.nian}</em></h2><p class="meta">整座镇子只有这一栋归你。默认那套不要钱，别的拿念换，买过的随便换来换去。${msg}</p>`
     + cats.map((c) => `<p class="meta" style="margin:10px 0 6px;color:var(--ink)">${SHOP_N[c]}</p>` + Object.entries(PR[c] || {}).map(([v, p]) => {

@@ -4,7 +4,7 @@
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { mat, washTex } from './shop/look.js';
-import { box, archShape } from './shop/house.js';
+import { box, archShape, DECOR } from './shop/house.js';
 import { winMat, vine, ruin, glowOf } from './mem.js';
 
 export const CARD = { white: '#f6f4ee', cobalt: '#1f4f9c', sea: '#3a86c0', pink: '#d5487a', sand: '#e6d6b4' };
@@ -205,22 +205,26 @@ export function netloft() {   // 露台屋：洞穴屋那种筒拱顶，前面�
 }
 
 // 你的店 · 圣托里尼：白盒子一楼开一扇大拱门当铺面，门口一把蓝白条遮阳伞、两张小圆桌，墙上手写招牌
-export function shop(sign) {
+export function shop(sign, dec = {}) {
+  // the owner's decor: storefront colour on the dome, door, window and chairs; awning on the parasol stripes; ivy as more bougainvillea; a light wall tint. Default stays cobalt and white
+  const blue = dec.base && dec.base !== '墨绿' && DECOR.base[dec.base] || P.cobalt, stripe = dec.awning && dec.awning !== '黄白' && DECOR.awning[dec.awning]?.[0] || P.cobalt;
+  const wallT = dec.wall && dec.wall !== '奶油' && DECOR.wall[dec.wall], tint = (m) => { if (wallT) m.color.set('#ffffff').lerp(new THREE.Color(wallT), .75); return m; };
   const g = new THREE.Group();
-  const a = rbox(2.2, 1.3, 1.6, plaster(301, [1, 1]), .08); a.position.y = .65; g.add(a); g.add(parapet(2.2, 1.6).translateY(1.3));
-  const b = rbox(1.2, .8, 1.0, plaster(303, [1, 1]), .07); b.position.set(-.4, 1.7, -.2); g.add(b);
-  const dm = dome(.36, P.cobalt); dm.position.set(-.4, 2.1, -.2); g.add(dm);
+  const a = rbox(2.2, 1.3, 1.6, tint(plaster(301, [1, 1])), .08); a.position.y = .65; g.add(a); g.add(parapet(2.2, 1.6).translateY(1.3));
+  const b = rbox(1.2, .8, 1.0, tint(plaster(303, [1, 1])), .07); b.position.set(-.4, 1.7, -.2); g.add(b);
+  const dm = dome(.36, blue); dm.position.set(-.4, 2.1, -.2); g.add(dm);
   const arch = new THREE.Mesh(new THREE.ShapeGeometry(archShape(.9, 1.0), 14), mat('#3a2a20', { emissive: new THREE.Color('#e0a050'), emissiveIntensity: .35 })); arch.position.set(-.3, 0, .805); arch.userData.noLine = true; g.add(arch);
   const cv = document.createElement('canvas'); cv.width = 512; cv.height = 96; const x = cv.getContext('2d');
-  x.fillStyle = P.cobalt; x.font = '400 64px "Long Cang", "Noto Serif SC", serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(((sign && sign[0]) || 'Café').slice(0, 10), 256, 50);
+  x.fillStyle = blue; x.font = '400 64px "Long Cang", "Noto Serif SC", serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(((sign && sign[0]) || 'Café').slice(0, 10), 256, 50);
   const tx = new THREE.CanvasTexture(cv); tx.colorSpace = THREE.SRGBColorSpace;
   const sg = new THREE.Mesh(new THREE.PlaneGeometry(1.4, .26), mat('#ffffff', { map: tx, transparent: true })); sg.position.set(-.3, 1.12, .81); sg.userData.noLine = true; g.add(sg);
-  const w = santoWindow({ id: 's', kind: 'dynamic', w: 9 }, P.cobalt); delete w.userData.mem; w.position.set(.75, .45, .805); g.add(w);
+  const w = santoWindow({ id: 's', kind: 'dynamic', w: 9 }, blue); delete w.userData.mem; w.position.set(.75, .45, .805); g.add(w);
   const um = new THREE.Group(); um.position.set(.6, 0, 1.35); g.add(um);
   const pole = box(.03, 1.0, .03, P.white); pole.position.y = .5; um.add(pole);
-  for (let i = 0; i < 8; i++) { const seg = new THREE.Mesh(new THREE.ConeGeometry(.55, .22, 8, 1, true, i / 8 * 6.283, 6.283 / 8), mat(i % 2 ? P.cobalt : P.white, { side: THREE.DoubleSide })); seg.position.y = 1.08; um.add(seg); }
-  for (const [tx2, tz] of [[-.6, 1.25], [1.15, 1.6]]) { const t = new THREE.Mesh(new THREE.CylinderGeometry(.2, .2, .03, 14), mat(P.white)); t.position.set(tx2, .38, tz); g.add(t); const l = box(.03, .38, .03, P.white); l.position.set(tx2, .19, tz); g.add(l); for (const sx of [-1, 1]) { const c = box(.14, .14, .14, P.cobalt); c.position.set(tx2 + sx * .3, .14, tz); g.add(c); } }
-  const bg = bougainvillea(18, 11); bg.position.set(.95, 1.3, .85); g.add(bg);
+  for (let i = 0; i < 8; i++) { const seg = new THREE.Mesh(new THREE.ConeGeometry(.55, .22, 8, 1, true, i / 8 * 6.283, 6.283 / 8), mat(i % 2 ? stripe : P.white, { side: THREE.DoubleSide })); seg.position.y = 1.08; um.add(seg); }
+  for (const [tx2, tz] of [[-.6, 1.25], [1.15, 1.6]]) { const t = new THREE.Mesh(new THREE.CylinderGeometry(.2, .2, .03, 14), mat(P.white)); t.position.set(tx2, .38, tz); g.add(t); const l = box(.03, .38, .03, P.white); l.position.set(tx2, .19, tz); g.add(l); for (const sx of [-1, 1]) { const c = box(.14, .14, .14, blue); c.position.set(tx2 + sx * .3, .14, tz); g.add(c); } }
+  const iv = +dec.ivy || 0, spots = [[.95, 1.3, .85, 18], [-.95, 1.3, .85, 16], [-.9, 2.1, .32, 12], [1.12, 1.3, -.2, 14]];
+  spots.slice(0, 1 + iv).forEach(([x, y, z, n], k) => { const bg = bougainvillea(n + iv * 6, 11 + k); bg.position.set(x, y, z); g.add(bg); });
   return g;
 }
 
