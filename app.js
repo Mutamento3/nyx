@@ -214,6 +214,83 @@
   // a sticker may be .png, .gif, .jpg or .webp — try them in turn, then fall back to the bracketed name
   var EXT = [".png", ".gif", ".jpg", ".webp"];
   function stkFallback(im) { var i = 0; im.onerror = function () { if (++i < EXT.length) im.src = C.stickers + im.dataset.n + EXT[i]; else im.replaceWith(document.createTextNode("[" + decodeURIComponent(im.dataset.n) + "]")); }; }
+  /* ---------- local delete: hides messages on this device only, the relay keeps them ---------- */
+  function delKey() { return "nyx_deleted:" + RELAY; }
+  var deleted = new Set(), msgs = new Map();
+  function loadDeleted() { deleted = new Set(); try { (JSON.parse(ls(delKey()) || "[]") || []).forEach(function (k) { deleted.add(String(k)); }); } catch (e) {} }
+  loadDeleted();
+  function delMsgs(ids) {
+    ids.forEach(function (id) {
+      deleted.add(String(id)); msgs.delete(+id);
+      var el = byId.get(+id); if (!el) return;
+      var pv = el.previousElementSibling, nx = el.nextElementSibling; el.remove(); byId.delete(+id);
+      if (pv && pv.classList.contains("day") && (!nx || nx.classList.contains("day"))) pv.remove();   // no orphan day labels
+    });
+    try { localStorage.setItem(delKey(), JSON.stringify(Array.from(deleted).slice(-5000))); } catch (e) {}
+    toast(ids.length > 1 ? "Deleted " + ids.length : "Deleted");
+  }
+  function toast(t) { var o = document.createElement("div"); o.className = "toast"; o.textContent = t; document.body.appendChild(o); setTimeout(function () { o.remove(); }, 1800); }
+  function snip(m, n) {
+    var t = String(m.text || "").replace(STK, "[sticker]").trim(); STK.lastIndex = 0;
+    var atts = (m.meta && m.meta.attachments) || [];
+    if (atts.length) t = (atts.some(function (a) { return a.kind === "image"; }) ? "[image]" : "[file]") + (t ? " " + t : "");
+    return t.length > n ? t.slice(0, n) + "…" : t;
+  }
+  function copyText(t) {
+    function old() { var ta = document.createElement("textarea"); ta.value = t; ta.style.cssText = "position:fixed;top:-1000px;opacity:0"; document.body.appendChild(ta); ta.select(); try { document.execCommand("copy"); } catch (e) {} ta.remove(); }
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t).catch(old); else old();
+  }
+  /* long-press (or right-click) a bubble: copy · quote · select · delete */
+  function bubbleMenu(el, m) {
+    if (root.classList.contains("selecting")) return;
+    var old = $("bubMenu"); if (old) old.remove();
+    var p = document.createElement("div"); p.id = "bubMenu";
+    p.innerHTML = (m.text ? '<button type="button" data-a="copy">Copy</button>' : "") + '<button type="button" data-a="quote">Quote</button><button type="button" data-a="select">Select</button><button type="button" data-a="del" class="danger">Delete</button>';
+    document.body.appendChild(p);
+    var r = el.querySelector(".body").getBoundingClientRect(), h = p.offsetHeight, w = p.offsetWidth;
+    var top = r.top - h - 8; if (top < 8) top = Math.min(innerHeight - h - 8, r.bottom + 8);
+    p.style.top = top + "px"; p.style.left = Math.min(innerWidth - w - 8, Math.max(8, m.from === "human" ? r.right - w : r.left)) + "px";
+    try { if (navigator.vibrate) navigator.vibrate(12); } catch (e) {}
+    function off(e) { if (!p.contains(e.target)) close(); }
+    function close() { p.remove(); document.removeEventListener("pointerdown", off, true); }
+    p.onclick = function (e) {
+      var b = e.target.closest("button"); if (!b) return; close();
+      if (b.dataset.a === "copy") copyText(m.text || "");
+      else if (b.dataset.a === "quote") setQuote({ id: +m.id, who: m.from === "human" ? ME : ((m.meta && m.meta.speaker) || AI), text: snip(m, 120) });
+      else if (b.dataset.a === "select") startSel(+m.id);
+      else if (b.dataset.a === "del") delMsgs([+m.id]);
+    };
+    setTimeout(function () { document.addEventListener("pointerdown", off, true); }, 0);
+  }
+  /* select mode: tap bubbles to tick them, then delete them together */
+  var sel = new Set();
+  function paintSel() { var bar = $("selBar"); if (bar) { bar.querySelector(".n").textContent = sel.size + " selected"; bar.querySelector(".del").disabled = !sel.size; } }
+  function startSel(id) {
+    sel.clear(); if (id) sel.add(id);
+    var bar = $("selBar");
+    if (!bar) {
+      bar = document.createElement("div"); bar.id = "selBar";
+      bar.innerHTML = '<span class="n"></span><button type="button" class="del danger">Delete</button><button type="button" class="x">Cancel</button>';
+      bar.querySelector(".del").onclick = function () { if (!sel.size) return; if (sel.size > 1 && !confirm("Delete " + sel.size + " messages from this device?")) return; delMsgs(Array.from(sel)); endSel(); };
+      bar.querySelector(".x").onclick = endSel;
+      document.querySelector("footer.write").before(bar);
+    }
+    bar.hidden = false; root.classList.add("selecting");
+    log.querySelectorAll(".msg.sel").forEach(function (n) { n.classList.remove("sel"); });
+    if (id && byId.get(id)) byId.get(id).classList.add("sel");
+    paintSel();
+  }
+  function endSel() { sel.clear(); root.classList.remove("selecting"); if ($("selBar")) $("selBar").hidden = true; log.querySelectorAll(".msg.sel").forEach(function (n) { n.classList.remove("sel"); }); }
+  log.addEventListener("click", function (e) {
+    if (!root.classList.contains("selecting")) return;
+    e.preventDefault(); e.stopPropagation();
+    var n = e.target.closest(".msg[data-id]"); if (!n || !/^\d+$/.test(n.dataset.id)) return;
+    var id = +n.dataset.id; if (sel.has(id)) { sel.delete(id); n.classList.remove("sel"); } else { sel.add(id); n.classList.add("sel"); }
+    paintSel();
+  }, true);
+  // the delivery mark on your own bubbles: a hollow new moon while it travels, a crescent once the relay has it
+  var MARK_SENT = '<i class="mark" aria-label="sent"><svg viewBox="0 0 12 12"><path d="M8.6 2.1A4.3 4.3 0 1 0 9.9 8.4 3.5 3.5 0 0 1 8.6 2.1Z"/></svg></i>';
+  var MARK_WAIT = '<i class="mark wait" aria-label="sending"><svg viewBox="0 0 12 12"><circle cx="6" cy="6" r="3.6"/></svg></i>';
   function build(m) {
     var me = m.from === "human", kind = m.kind || "reply", el = document.createElement("div");
     el.className = "msg " + (me ? "me" : "ai") + (kind === "thinking" ? " think" : kind === "act" ? " act" : "");
@@ -228,10 +305,18 @@
       if (C.stickers && !atts.length && String(m.text || "").replace(STK, "").trim() === "" && STK.test(m.text || "")) el.classList.add("only-stk");
       STK.lastIndex = 0;
     }
-    el.innerHTML = '<div class="body">' + inner + '<span class="t">' + hm(m.ts) + "</span></div>";
+    el.innerHTML = '<div class="body">' + inner + '<span class="t">' + hm(m.ts) + (me ? (m.id !== "" && m.id != null ? MARK_SENT : MARK_WAIT) : "") + "</span></div>";
     wireAtts(el, (m.meta && m.meta.attachments) || []);
     el.querySelectorAll("img.stk").forEach(stkFallback);
-    el.ondblclick = function () { setQuote({ id: m.id, who: me ? ME : (who || AI), text: m.text }); };
+    if (m.id !== "" && m.id != null) {
+      el.oncontextmenu = function (e) { e.preventDefault(); bubbleMenu(el, m); };
+      var lp = null, sx = 0, sy = 0;   // iOS doesn't always fire contextmenu on a long press, so count it ourselves
+      el.addEventListener("pointerdown", function (e) { sx = e.clientX; sy = e.clientY; clearTimeout(lp); lp = setTimeout(function () { bubbleMenu(el, m); }, 520); });
+      el.addEventListener("pointermove", function (e) { if (Math.hypot(e.clientX - sx, e.clientY - sy) > 8) clearTimeout(lp); });
+      ["pointerup", "pointercancel", "pointerleave"].forEach(function (t) { el.addEventListener(t, function () { clearTimeout(lp); }); });
+      if (sel.has(+m.id)) el.classList.add("sel");
+    }
+    el.ondblclick = function () { if (!root.classList.contains("selecting")) setQuote({ id: m.id, who: me ? ME : (who || AI), text: snip(m, 120) }); };
     return el;
   }
   // put one message in its place by id (history and stream can both deliver it; the second copy just replaces)
@@ -239,8 +324,13 @@
     if (!m || m.id == null) return;
     var id = +m.id; if (id > lastId) lastId = id;
     if (m.meta && m.meta.stream_id) dropDraft(m.meta.stream_id + ":" + (m.kind === "thinking" ? "thinking" : "reply"));
-    if (m.from === "human") { var p = log.querySelector('.msg.pending[data-text="' + CSS.escape(m.text || "") + '"]'); if (p) p.remove(); }
+    var p = null;
+    if (m.from === "human") { p = log.querySelector('.msg.pending[data-text="' + CSS.escape(m.text || "") + '"]'); if (p) p.remove(); }
+    if (deleted.has(String(m.id))) return;
+    msgs.set(id, m);
     var el = build(m), old = byId.get(id), stick = nearBottom();
+    // the real copy of a just-sent image fetches it back from the relay; borrow the local preview so the bubble isn't blank meanwhile
+    if (p) { var lp = p.querySelectorAll(".att img"), np = el.querySelectorAll(".att img"); for (var j = 0; j < np.length && j < lp.length; j++) if (lp[j].src && !np[j].getAttribute("src")) np[j].src = lp[j].src; }
     if (old) { old.replaceWith(el); byId.set(id, el); return; }
     byId.set(id, el);
     var after = null; // walk back to the last message older than this one
@@ -266,11 +356,12 @@
   }
   function dropDraft(k) { var d = drafts.get(k); if (d) { d.el.remove(); drafts.delete(k); } }
 
-  var typingEl = null;
+  // typing flickers on and off while the companion thinks; hiding the dots at once makes the log jump, so let them linger a moment
+  var typingEl = null, typingOffT = 0;
   function typing(on) {
-    spin(on);
+    spin(on); clearTimeout(typingOffT);
     if (on && !typingEl) { typingEl = document.createElement("div"); typingEl.id = "typing"; typingEl.innerHTML = "<i></i><i></i><i></i>"; log.appendChild(typingEl); if (nearBottom(160)) toBottom(); }
-    if (!on && typingEl) { typingEl.remove(); typingEl = null; }
+    if (!on && typingEl) typingOffT = setTimeout(function () { if (typingEl) { typingEl.remove(); typingEl = null; } }, 2500);
   }
   function keepTyping() { if (typingEl) log.appendChild(typingEl); }
   function nearBottom(px) { return log.scrollHeight - log.scrollTop - log.clientHeight < (px || 80); }
@@ -285,51 +376,169 @@
   $("quote").querySelector("button").onclick = function () { setQuote(null); };
   function grow() { text.style.height = "auto"; text.style.height = Math.min(text.scrollHeight, innerHeight * .4) + "px"; }
   text.addEventListener("input", grow);
+  // on a phone Enter is a new line and the send button sends; with a keyboard Enter sends and Shift+Enter breaks the line
+  var touchInput = window.matchMedia && matchMedia("(pointer: coarse)").matches;
+  if (touchInput) text.setAttribute("enterkeyhint", "enter");
   text.addEventListener("keydown", function (e) {
-    // Enter sends, Shift+Enter breaks the line; never while an input method is still composing (Chinese, Japanese…)
-    if (e.key === "Enter" && !e.shiftKey && !e.isComposing && e.keyCode !== 229) { e.preventDefault(); send(); }
+    // never while an input method is still composing (Chinese, Japanese…)
+    if (e.key === "Enter" && !e.shiftKey && !touchInput && !e.isComposing && e.keyCode !== 229) { e.preventDefault(); send(); }
   });
   sendBtn.onclick = send;
   /* attachments: pick → upload right away → they ride along with the next send */
   var tray = [], trayEl = $("tray");
+  // big photos are shrunk before upload (longest side 2048, JPEG 0.9); GIFs and small files go as they are
+  function prep(f) {
+    return new Promise(function (ok) {
+      if (!/^image\//.test(f.type || "") || /gif$/i.test(f.type) || f.size < 350 * 1024) { ok(f); return; }
+      var u = URL.createObjectURL(f), im = new Image();
+      im.onload = function () {
+        try {
+          var w = im.naturalWidth, h = im.naturalHeight, k = Math.min(1, 2048 / Math.max(w, h)), c = document.createElement("canvas");
+          c.width = Math.round(w * k); c.height = Math.round(h * k); c.getContext("2d").drawImage(im, 0, 0, c.width, c.height); URL.revokeObjectURL(u);
+          c.toBlob(function (b) { ok(b && b.size < f.size ? new File([b], (f.name || "image").replace(/\.[^.]+$/, "") + ".jpg", { type: "image/jpeg" }) : f); }, "image/jpeg", .9);
+        } catch (e) { URL.revokeObjectURL(u); ok(f); }
+      };
+      im.onerror = function () { URL.revokeObjectURL(u); ok(f); };
+      im.src = u;
+    });
+  }
+  // one upload; on a flaky line it tries twice more before giving up
+  function upload(it, tries) {
+    tries = tries || 0; it.done = null;
+    it.job = fetch(RELAY + "/app/upload?name=" + encodeURIComponent(it.file.name), { method: "POST", headers: { "Authorization": "Bearer " + key, "Content-Type": it.file.type || "application/octet-stream" }, body: it.file })
+      .then(function (r) { if (!r.ok) throw new Error("upload " + r.status); return r.json(); })
+      .then(function (a) { it.done = a; it.el.classList.remove("up"); },
+        function () { if (tries < 2) return new Promise(function (ok) { setTimeout(ok, 1200); }).then(function () { return upload(it, tries + 1); }); it.el.classList.remove("up"); it.el.style.outline = "1px solid var(--accent)"; });
+    return it.job;
+  }
   $("clip").onclick = function () { $("file").click(); };
   $("file").onchange = function () {
     Array.prototype.forEach.call(this.files, function (f) {
       var it = { name: f.name, done: null, el: document.createElement("div") };
       it.el.className = "it up"; it.el.innerHTML = '<button type="button" aria-label="Remove">×</button>' + (f.type.indexOf("image/") ? esc(f.name.slice(0, 14)) : "");
-      if (!f.type.indexOf("image/")) it.el.style.backgroundImage = "url(" + URL.createObjectURL(f) + ")";
+      if (!f.type.indexOf("image/")) { it.local = URL.createObjectURL(f); it.el.style.backgroundImage = "url(" + it.local + ")"; }
       it.el.querySelector("button").onclick = function () { tray = tray.filter(function (x) { return x !== it; }); it.el.remove(); trayEl.hidden = !tray.length; };
       trayEl.appendChild(it.el); trayEl.hidden = false; tray.push(it);
-      it.job = fetch(RELAY + "/app/upload?name=" + encodeURIComponent(f.name), { method: "POST", headers: { "Authorization": "Bearer " + key, "Content-Type": f.type || "application/octet-stream" }, body: f })
-        .then(function (r) { if (!r.ok) throw new Error("upload " + r.status); return r.json(); })
-        .then(function (a) { it.done = a; it.el.classList.remove("up"); }, function () { it.el.classList.remove("up"); it.el.style.outline = "1px solid var(--accent)"; });
+      it.file = f; it.job = prep(f).then(function (ff) { it.file = ff; return upload(it); });
     });
     this.value = "";
   };
   /* emoji & stickers: emoji go into the text, a sticker is sent on its own straight away */
   var EMO = "😀😂🥹😭🥺😳😌😏🙃🤔😴🤤😤😵‍💫🫠🤍🖤💛🧡🔥✨🌙☀️👀🙏👍👏🫶🤝🦀🍜☕️".match(/\p{Extended_Pictographic}(\uFE0F|\u200D\p{Extended_Pictographic}\uFE0F?)*/gu) || [];
+  /* Your own stickers and kaomoji live on this device (nyx_stickers: [{id, data}], nyx_kaomoji: ["…"]) and share one grid
+     with the relay's stickers. ＋ saves pictures from the album, long-press removes one, and tapping a sticker the
+     companion sent offers to keep it. */
+  var MY_STK = "nyx_stickers", MY_KAO = "nyx_kaomoji";
+  function loadList(k) { try { var a = JSON.parse(ls(k) || "[]"); return Array.isArray(a) ? a : []; } catch (e) { return []; } }
+  function saveList(k, a) { try { localStorage.setItem(k, JSON.stringify(a)); return true; } catch (e) { toast(k === MY_STK ? "No room left — delete a few first" : "Couldn't save"); return false; } }
+  function shrinkSticker(f) {   // 240px is plenty for a sticker; small GIFs keep their animation
+    return new Promise(function (ok) {
+      if (f.type === "image/gif" && f.size < 400 * 1024) { var r = new FileReader(); r.onload = function () { ok(r.result); }; r.onerror = function () { ok(null); }; r.readAsDataURL(f); return; }
+      var u = URL.createObjectURL(f), im = new Image();
+      im.onload = function () {
+        var k = Math.min(1, 240 / Math.max(im.naturalWidth, im.naturalHeight)), c = document.createElement("canvas");
+        c.width = Math.max(1, Math.round(im.naturalWidth * k)); c.height = Math.max(1, Math.round(im.naturalHeight * k));
+        c.getContext("2d").drawImage(im, 0, 0, c.width, c.height); URL.revokeObjectURL(u);
+        var d = c.toDataURL("image/webp", .86); if (d.indexOf("data:image/webp") !== 0) d = c.toDataURL("image/png"); ok(d);
+      };
+      im.onerror = function () { URL.revokeObjectURL(u); ok(null); };
+      im.src = u;
+    });
+  }
+  function nid() { return Date.now() + "-" + Math.random().toString(36).slice(2, 6); }
   (function () { var pop = $("emoPop"), stk = (C.stickers && C.stickerList) || [];
-    pop.innerHTML = (stk.length ? '<div class="stks">' + stk.map(function (n) { return '<button type="button" data-s="' + esc(n) + '"><img class="stk" data-n="' + encodeURIComponent(n) + '" alt="' + esc(n) + '" src="' + C.stickers + encodeURIComponent(n) + '.png"></button>'; }).join("") + "</div>" : "") +
-      '<div class="emos">' + EMO.map(function (e) { return '<button type="button" data-e="' + e + '">' + e + "</button>"; }).join("") + "</div>";
-    pop.querySelectorAll("img.stk").forEach(stkFallback);
+    function paint() {
+      var mine = loadList(MY_STK), kao = loadList(MY_KAO);
+      pop.innerHTML = '<div class="stks"><button type="button" class="add" data-act="add" aria-label="Add a sticker">＋</button>' +
+        mine.map(function (x) { return '<button type="button" data-my="' + esc(x.id) + '"><img src="' + x.data + '" alt=""></button>'; }).join("") +
+        stk.map(function (n) { return '<button type="button" data-s="' + esc(n) + '"><img class="stk" data-n="' + encodeURIComponent(n) + '" alt="' + esc(n) + '" src="' + C.stickers + encodeURIComponent(n) + '.png"></button>'; }).join("") + "</div>" +
+        '<div class="kao">' + kao.map(function (t, i) { return '<button type="button" data-k="' + i + '">' + esc(t) + "</button>"; }).join("") + '<button type="button" class="add" data-act="kao">＋ kaomoji</button></div>' +
+        '<div class="emos">' + EMO.map(function (e) { return '<button type="button" data-e="' + e + '">' + e + "</button>"; }).join("") + "</div>";
+      pop.querySelectorAll("img.stk").forEach(stkFallback);
+    }
+    paint();
+    var inp = document.createElement("input"); inp.type = "file"; inp.accept = "image/*"; inp.multiple = true; inp.hidden = true; document.body.appendChild(inp);
+    inp.onchange = function () {
+      var fs = Array.prototype.slice.call(inp.files || []), list = loadList(MY_STK); inp.value = "";
+      fs.reduce(function (p, f) { return p.then(function () { return shrinkSticker(f).then(function (d) { if (d) list.unshift({ id: nid(), data: d }); }); }); }, Promise.resolve())
+        .then(function () { if (saveList(MY_STK, list)) paint(); });
+    };
+    function sendMine(x) {   // upload the saved picture, then send it on its own
+      var parts = x.data.split(","), mime = (parts[0].match(/data:([^;]+)/) || [])[1] || "image/png", bin = atob(parts[1]), u = new Uint8Array(bin.length);
+      for (var i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i);
+      api("/app/upload?name=" + encodeURIComponent("sticker-" + x.id + "." + (mime.split("/")[1] || "png")), { method: "POST", headers: { "Content-Type": mime }, body: new Blob([u], { type: mime }) })
+        .then(function (a) { return api("/app/send", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text: "", side: root.dataset.side, attachments: [a] }) }); })
+        .then(function () { setTimeout(catchUp, 1500); }, function () { toast("Sticker not sent"); });
+    }
+    var lpT = 0, pressed = false, caret = null;
+    text.addEventListener("blur", function () { caret = [text.selectionStart, text.selectionEnd]; });
+    pop.addEventListener("pointerdown", function (e) {
+      var my = e.target.closest("[data-my]"), k = e.target.closest("[data-k]"); pressed = false; if (!my && !k) return;
+      lpT = setTimeout(function () {
+        pressed = true;
+        if (k && confirm("Remove this kaomoji?")) { var a = loadList(MY_KAO); a.splice(+k.dataset.k, 1); saveList(MY_KAO, a); paint(); }
+        if (my && confirm("Remove this sticker?")) { saveList(MY_STK, loadList(MY_STK).filter(function (x) { return x.id !== my.dataset.my; })); paint(); }
+      }, 550);
+    });
+    ["pointerup", "pointercancel", "pointerleave"].forEach(function (t) { pop.addEventListener(t, function () { clearTimeout(lpT); }); });
+    pop.addEventListener("contextmenu", function (e) { if (e.target.closest("[data-my],[data-k]")) e.preventDefault(); });
+    function insert(w) { var c = caret || [text.selectionStart || text.value.length, text.selectionEnd || text.value.length]; text.value = text.value.slice(0, c[0]) + w + text.value.slice(c[1]); caret = [c[0] + w.length, c[0] + w.length]; grow(); }
     pop.onclick = function (e) { var b = e.target.closest("button"); if (!b) return;
-      if (b.dataset.e) { var s = text.selectionStart || text.value.length; text.value = text.value.slice(0, s) + b.dataset.e + text.value.slice(text.selectionEnd || s); grow(); }
+      if (pressed) { pressed = false; return; }
+      if (b.dataset.act === "add") inp.click();
+      else if (b.dataset.act === "kao") {   // saves what's in the box, or asks
+        var t = text.value.trim(), fromBox = !!t; if (!t) t = (prompt("Save a kaomoji") || "").trim(); if (!t) return;
+        var a = loadList(MY_KAO); if (a.indexOf(t) >= 0) { toast("Already saved"); return; }
+        a.push(t.slice(0, 40)); if (saveList(MY_KAO, a)) { if (fromBox) { text.value = ""; grow(); caret = null; } paint(); toast("Saved"); }
+      }
+      else if (b.dataset.e) insert(b.dataset.e);
+      else if (b.dataset.k != null) insert(loadList(MY_KAO)[+b.dataset.k] || "");
+      else if (b.dataset.my) { var x = loadList(MY_STK).filter(function (y) { return y.id === b.dataset.my; })[0]; if (x) { pop.hidden = true; sendMine(x); } }
       else if (b.dataset.s) { var keep = text.value; text.value = "[sticker:" + b.dataset.s + "]"; send(); text.value = keep; grow(); pop.hidden = true; } };
     $("emo").onclick = function () { pop.hidden = !pop.hidden; };
-    log.addEventListener("click", function () { pop.hidden = true; }); })();
+    log.addEventListener("click", function (e) {
+      pop.hidden = true;
+      var im = e.target.closest && e.target.closest(".msg.ai img.stk"); if (!im || root.classList.contains("selecting")) return;
+      if (!confirm("Keep this sticker?")) return;
+      fetch(im.currentSrc || im.src).then(function (r) { return r.blob(); }).then(function (bl) {
+        return new Promise(function (ok, no) { var r = new FileReader(); r.onload = function () { ok(r.result); }; r.onerror = no; r.readAsDataURL(bl); });
+      }).then(function (d) {
+        var list = loadList(MY_STK); if (list.some(function (x) { return x.data === d; })) { toast("Already saved"); return; }
+        list.unshift({ id: nid(), data: d }); if (saveList(MY_STK, list)) { paint(); toast("Saved"); }
+      }).catch(function () { toast("Couldn't save"); });
+    }); })();
+  // sending drops the bubble in at once, with blurred local previews of any images still uploading; the message itself
+  // goes out once they're up. If an image never makes it, nothing is sent and a tap retries just the missing ones.
   function send() {
     var t = text.value.trim(); if ((!t && !tray.length) || !key) return;
-    if (tray.some(function (x) { return !x.done && x.job; })) { Promise.all(tray.map(function (x) { return x.job; })).then(send); return; }
-    var atts = tray.filter(function (x) { return x.done; }).map(function (x) { return x.done; });
+    var items = tray.slice(), q = quote;
     tray = []; trayEl.innerHTML = ""; trayEl.hidden = true;
-    var pending = build({ id: "", from: "human", text: t, ts: new Date().toISOString(), meta: Object.assign(quote ? { quote: quote } : {}, { attachments: atts }) });
-    pending.classList.add("pending"); pending.dataset.text = t; log.appendChild(pending); keepTyping(); toBottom();
-    var body = { text: t, side: root.dataset.side }; if (quote) body.quote = quote; if (atts.length) body.attachments = atts;
     text.value = ""; grow(); setQuote(null);
-    api("/app/send", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) })
-      .then(function () { setTimeout(catchUp, 1500); })   // the stream normally echoes it; this is the safety net
-      .catch(function (e) { pending.classList.remove("pending"); pending.classList.add("failed"); pending.querySelector(".t").textContent = e.auth ? "key rejected" : "not sent — tap to retry";
-        pending.onclick = function () { pending.remove(); text.value = t; grow(); send(); }; if (e.auth) logout(); });
+    var local = items.map(function (x) { return x.local ? { kind: "image", name: x.name } : { kind: "file", name: x.name }; });
+    var pending = build({ id: "", from: "human", text: t, ts: new Date().toISOString(), meta: Object.assign(q ? { quote: q } : {}, { attachments: local }) });
+    pending.querySelectorAll(".att img[data-i]").forEach(function (im) { var x = items[+im.dataset.i]; if (x && x.local) im.src = x.local; });
+    pending.classList.add("pending"); pending.dataset.text = t; log.appendChild(pending); keepTyping(); toBottom();
+    function mark(state, label, onTap) { pending.classList.remove("pending", "failed"); pending.classList.add(state); if (label) pending.querySelector(".t").textContent = label; pending.onclick = onTap || null; }
+    function fail(e) { mark("failed", e && e.auth ? "key rejected" : "not sent — tap to retry", function () { pending.remove(); text.value = t; grow(); send(); }); if (e && e.auth) logout(); }
+    function missing() { return items.some(function (x) { return x.file && !x.done; }); }
+    function retry() {
+      mark("pending"); pending.querySelector(".t").innerHTML = hm(new Date().toISOString()) + MARK_WAIT;
+      Promise.all(items.map(function (x) { return x.file && !x.done ? upload(x) : null; })).then(function () {
+        if (missing()) { mark("failed", "image still not up — tap again later", retry); return; }
+        go();
+      });
+    }
+    function go() {
+      var atts = items.filter(function (x) { return x.done; }).map(function (x) { return x.done; });
+      if (!t && !atts.length) { fail(); return; }
+      var body = { text: t, side: root.dataset.side }; if (q) body.quote = q; if (atts.length) body.attachments = atts;
+      return api("/app/send", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) })
+        .then(function () { setTimeout(catchUp, 1500); }).catch(fail);   // the stream normally echoes it; this is the safety net
+    }
+    Promise.all(items.map(function (x) { return x.job || null; })).then(function () {
+      if (missing()) { mark("failed", "image didn't upload — tap to retry", retry); return; }
+      return go();
+    }).catch(fail);
   }
 
   /* ---------- the floating ball: GET /app/meter, POST /app/model ---------- */
@@ -383,7 +592,9 @@
     if (document.activeElement !== $("mCarryC") && cy.chars != null) $("mCarryC").value = cy.chars; carryLabels();
     var ctx = $("mCtx"); ctx.hidden = false;
     var size = w.size || (meterData && meterData.context && meterData.context.size) || 1000000;
-    if (!(meterData && meterData.context && meterData.context.used_pct != null)) { ctx.querySelector("b").style.width = Math.min(100, 100 * (w.used || 0) / size) + "%"; }
+    // the label reads "used / line", so with a line set the bar is measured against the line, not the whole window
+    if (w.used) ctx.querySelector("b").style.width = Math.min(100, 100 * w.used / (w.line_k ? w.line_k * 1000 : size)) + "%";
+    else if (!(meterData && meterData.context && meterData.context.used_pct != null)) ctx.querySelector("b").style.width = "0%";
     ctx.querySelector("em").textContent = kfmt(w.used) + (w.line_k ? " / " + w.line_k + "k" : "");
     var s0 = w.started_at, sec = typeof s0 === "number" ? (s0 > 1e12 ? s0 / 1000 : s0) : s0 ? Date.parse(s0) / 1000 : 0;   // ms, s or ISO
     $("mWinNote").textContent = sec ? "This window opened " + whenReset(sec) + "." : "";
@@ -479,7 +690,7 @@
         if (hit && hit.key !== k) { hit.key = k; localStorage.setItem("nyx_contacts", JSON.stringify(cl)); }
       } catch (e) {}
       $("gate").hidden = true; $("aiName").textContent = AI;
-      log.innerHTML = ""; byId.clear(); lastId = 0;
+      log.innerHTML = ""; byId.clear(); msgs.clear(); lastId = 0; loadDeleted();
       (d.messages || []).forEach(put); openStream(); loadMeter();
       if (!hold && window.NyxHold) hold = NyxHold(hapi, { me: ME, chat: api });
       pollBusy();
@@ -499,6 +710,24 @@
     enter(k).catch(function (err) { $("gateErr").textContent = err.auth ? "That key didn't open it." : "Can't reach the relay right now."; key = null; });
   };
   document.addEventListener("visibilitychange", function () { if (!document.hidden && key) { catchUp(); if (!streamCtl) openStream(); } });
+
+  /* iOS pushes the whole page up when the keyboard opens: the header slides off and a gap opens under the box.
+     Size the chat to the visible viewport instead while the keyboard is up. */
+  (function () {
+    var vv = window.visualViewport, room = $("room"); if (!vv || !room) return;
+    function apply() {
+      var kb = (window.innerHeight || 0) - vv.height > 80;
+      root.classList.toggle("kb", kb);
+      if (kb) { room.style.height = vv.height + "px"; room.style.top = vv.offsetTop + "px"; room.style.bottom = "auto"; }
+      else { room.style.height = room.style.top = room.style.bottom = ""; }
+      if (kb && document.activeElement === text) toBottom();
+    }
+    var t = 0;
+    vv.addEventListener("resize", function () { apply(); clearTimeout(t); t = setTimeout(apply, 120); });
+    vv.addEventListener("scroll", apply);
+    text.addEventListener("focus", function () { [0, 80, 350, 700].forEach(function (d) { setTimeout(apply, d); }); });
+    text.addEventListener("blur", function () { [80, 350].forEach(function (d) { setTimeout(apply, d); }); });
+  })();
 
   if (window.NyxSplash) NyxSplash(root.dataset.side, root.dataset.side, C.splash);
   var saved = null; try { saved = localStorage.getItem("nyx_key"); } catch (e) {}
