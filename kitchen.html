@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
 <link rel="apple-touch-icon" href="icon-180.png"><link rel="icon" href="icon-192.png"><link rel="manifest" href="manifest.webmanifest">   <!-- the night tree -->
 
 <meta name="theme-color" content="#ECE8E1">
@@ -31,13 +31,13 @@
   .top{ display:flex; align-items:center; gap:8px; margin-bottom:6px; }
   .back{ width:40px; height:40px; border:0; background:none; border-radius:50%; display:grid; place-items:center; margin-left:-8px; cursor:pointer; }
   .back svg{ width:22px; height:22px; }
-  h1{ font-size:26px; font-weight:600; letter-spacing:.14em; margin:2px 0 16px; }
+  h1{ font-size:22px; font-weight:600; letter-spacing:.14em; margin:2px 0 16px; }
   .sec{ margin:0 0 18px; }
   .sec-h{ display:flex; align-items:baseline; justify-content:space-between; margin-bottom:8px; }
-  .sec-h b{ font-size:15px; letter-spacing:.14em; font-weight:600; }
+  .sec-h b{ font-size:14px; letter-spacing:.14em; font-weight:600; }
   .sec-h span{ font-size:12px; color:var(--soft); letter-spacing:.06em; }
   .chips{ display:flex; flex-wrap:wrap; gap:8px; }
-  .chip{ position:relative; border:1px solid var(--line); background:var(--card); border-radius:12px; padding:7px 13px; font-size:15px; cursor:pointer; }
+  .chip{ position:relative; border:1px solid var(--line); background:var(--card); border-radius:12px; padding:6px 12px; font-size:14px; cursor:pointer; }
   .chip.pick{ background:var(--pick); border-color:var(--acc); color:var(--acc); }
   .chip.add{ color:var(--soft); border-style:dashed; background:transparent; }
   .chip.staple{ background:transparent; }
@@ -71,7 +71,7 @@
   .kv{ font-size:14px; line-height:1.9; color:var(--soft); }
   .kv i{ font-style:normal; color:var(--ink); }
   ol.steps{ list-style:none; padding:0; margin:16px 0; counter-reset:s; }
-  ol.steps li{ counter-increment:s; position:relative; padding:12px 12px 12px 44px; margin-bottom:8px; background:var(--card); border:1px solid var(--line); border-radius:14px; font-size:16px; line-height:1.7; cursor:pointer; }
+  ol.steps li{ counter-increment:s; position:relative; padding:12px 12px 12px 44px; margin-bottom:8px; background:var(--card); border:1px solid var(--line); border-radius:14px; font-size:15px; line-height:1.7; cursor:pointer; }
   ol.steps li::before{ content:counter(s); position:absolute; left:14px; top:12px; width:20px; height:20px; border-radius:50%; border:1px solid var(--acc); color:var(--acc); font-size:12px; line-height:20px; text-align:center; }
   ol.steps li.done{ color:var(--soft); text-decoration:line-through; text-decoration-color:rgba(164,73,42,.5); }
   ol.steps li.done::before{ content:"✓"; background:var(--acc); color:#fff; }
