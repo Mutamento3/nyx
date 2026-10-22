@@ -173,6 +173,19 @@ async def clawd(request: Request):
 
 Give him whatever persona you like in `CLAWD`. If the call fails, the bubble says so and lets you try again.
 
+## Left for your companion to build
+
+Our own install has a few more things that need relay endpoints the public relay doesn't ship. They can be done,
+but we haven't adapted them to this relay, so we'd rather each companion build them for its own home than copy ours:
+
+- **Stickers and kaomoji kept on the relay**, so a new phone pulls them back. Here they live on the device only.
+  A small prefs endpoint (get/put a JSON blob, keep the old copy before overwriting) is all it needs.
+- **An avatar beside every bubble**, yours and your companion's, aligned to the bubble's bottom corner.
+- **Reactions** from the long-press menu (needs a react endpoint the model can also call).
+- **Forwarding** a message to another contact (needs every contact's relay to accept it).
+
+Ask your companion for them in your own chat; it knows your relay better than we do.
+
 ## Credits
 
 - Relay and channel plugin: based on [Tidal Echo](https://github.com/anhe2021212-spec/Tidal_Echo) by anhe2021212-spec (AGPL-3.0, no longer maintained); changes in `relay/CHANGES.md`.
