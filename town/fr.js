@@ -234,3 +234,23 @@ export const guide = {
     cafe: ['你的店', '整座镇子只有这一栋归你：房型、墙、门面、遮阳篷、门口摆什么，拿念换，都你说了算。小机以后也能往里添东西。'],
   },
 };
+
+// The companion's gallery: a small museum by the square (gallery.html inside).
+export function gallery() {
+  const g = new THREE.Group(), W = 2.6, D = 1.6, H = 1.25;
+  const body = box(W, H, D, mat('#ffffff', { map: washTex(P.stone, { seed: 51, blots: 30 }) })); body.position.y = H / 2; g.add(body);
+  const plinth = box(W + .08, .14, D + .08, P.stoneD); plinth.position.y = .07; g.add(plinth);
+  for (const x of [-.85, .85]) { const w = archWindow(.42, .82, { frame: P.trim, glass: C.glass, lit: true, sill: false, surround: P.trimD }); w.position.set(x, .2, D / 2 + .005); g.add(w); }
+  const door = box(.46, .72, .05, P.teal, .01); door.position.set(0, .4, D / 2 + .02); g.add(door);
+  const fan = new THREE.Mesh(new THREE.ShapeGeometry(archShape(.46, .22), 12), mat(C.glass, LIT)); fan.position.set(0, .76, D / 2 + .02); fan.userData.noLine = true; g.add(fan);
+  const cor = box(W + .16, .1, D + .16, P.trim); cor.position.y = H + .05; g.add(cor);
+  const attic = box(W - .2, .22, D - .2, P.trimD); attic.position.y = H + .21; g.add(attic);
+  const sky = new THREE.Mesh(new THREE.CylinderGeometry(.42, .42, W - .5, 12, 1, false, 0, Math.PI), mat('#b9cbd4', { emissive: new THREE.Color('#e9d6a8'), emissiveIntensity: .25 })); sky.rotation.z = Math.PI / 2; sky.position.y = H + .32; g.add(sky);   // 玻璃筒拱天窗
+  for (let x = -(W - .5) / 2; x <= (W - .5) / 2 + .01; x += .3) { const r = new THREE.Mesh(new THREE.TorusGeometry(.42, .012, 4, 12, Math.PI), mat(P.iron)); r.rotation.y = Math.PI / 2; r.position.set(x, H + .32, 0); r.userData.noLine = true; g.add(r); }
+  const cv = document.createElement('canvas'); cv.width = 512; cv.height = 80; const x = cv.getContext('2d');
+  x.fillStyle = P.slateD; x.fillRect(0, 0, 512, 80); x.fillStyle = '#e9dcc2'; x.font = 'italic 46px "Cormorant Garamond", Georgia, serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('G A L E R I E', 256, 42);
+  const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace;
+  const sg = new THREE.Mesh(new THREE.PlaneGeometry(1.3, .2), mat('#ffffff', { map: t })); sg.position.set(0, H - .12, D / 2 + .01); sg.userData.noLine = true; g.add(sg);
+  for (const sx of [-1, 1]) { const l = shopLamp(); l.scale.setScalar(.55); l.position.set(sx * .45, 0, D / 2 + .35); g.add(l); }
+  return g;
+}

@@ -341,3 +341,32 @@ export const guide = {
     courtyard: ['院落', '矮粉墙围一个院子，门楼小小的，院里一棵树一口石缸，后面一间长屋。'],
   },
 };
+
+// The companion's gallery: a small museum by the square (gallery.html inside).
+export function gallery() {
+  const g = new THREE.Group(), W = 2.5, D = 1.6, PH = .2, H = 1.15, OV = .32;
+  g.add(platform(W + .4, D + .4, PH));
+  const back = box(W, H, D - .3, mat('#ffffff', { map: washTex(P.wall, { seed: 131, blots: 20 }) })); back.position.set(0, PH + H / 2, -.15); g.add(back);
+  columns(g, [-W / 2, -W / 6, W / 6, W / 2], D / 2 - .05, PH, H, .55);
+  const rf = gableRoof(W, D, .55, { over: OV }); rf.position.y = PH + H; g.add(rf);
+  const pq = plaque('画斋', .9); pq.position.set(0, PH + H + .02, D / 2 + OV + .02); pq.rotation.x = -.35; g.add(pq);   // 檐口外沿挂着，往下斜一点
+  // 「画」字幡：跟茶铺那面一样的做法，一根竹竿斜挑出来挂一条长布
+  const pole = new THREE.Mesh(new THREE.CylinderGeometry(.018, .018, 1.2, 6), mat('#8a7a50')); pole.position.set(W / 2 + .3, 1.55, D / 2 + .1); pole.rotation.z = -.5; g.add(pole);
+  const cv = document.createElement('canvas'); cv.width = 64; cv.height = 256; const x = cv.getContext('2d');
+  x.fillStyle = '#f2ead6'; x.fillRect(0, 0, 64, 256); x.strokeStyle = '#2D5A7C'; x.lineWidth = 3; x.strokeRect(4, 4, 56, 248);
+  x.fillStyle = '#1A3550'; x.font = '600 46px "Noto Serif SC", serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('画', 32, 92);
+  const tx = new THREE.CanvasTexture(cv); tx.colorSpace = THREE.SRGBColorSpace;
+  const flag = new THREE.Mesh(new THREE.PlaneGeometry(.28, 1.05), mat('#ffffff', { map: tx, side: THREE.DoubleSide })); flag.position.set(W / 2 + .58, 1.36, D / 2 + .1); flag.rotation.y = -.3; flag.userData.noLine = true; g.add(flag);
+  // 晒画台：台基前面一张矮长桌，平摊两张画，中间一方墨、一支笔
+  const tb = new THREE.Group(); tb.position.set(-.2, 0, D / 2 + .95); g.add(tb);
+  const top = box(1.5, .05, .55, P.wood); top.position.y = .32; tb.add(top);
+  for (const [lx, lz] of [[-.68, -.22], [.68, -.22], [-.68, .22], [.68, .22]]) { const l = box(.05, .3, .05, P.wood); l.position.set(lx, .15, lz); tb.add(l); }
+  for (const [px, c, ink] of [[-.4, '#efe6cf', '#5b6a6a'], [.36, '#e9dfc6', '#7a5a46']]) {
+    const sh = box(.5, .008, .4, c); sh.position.set(px, .35, 0); sh.rotation.y = px < 0 ? .06 : -.05; sh.userData.noLine = true; tb.add(sh);
+    const mk = box(.26, .009, .16, ink); mk.position.set(px - .04, .356, -.03); mk.rotation.y = sh.rotation.y; mk.userData.noLine = true; tb.add(mk);
+    const seal = box(.04, .01, .04, '#b8402c'); seal.position.set(px + .17, .357, .13); seal.userData.noLine = true; tb.add(seal);
+  }
+  const inkstone = box(.12, .04, .08, '#2b2f33'); inkstone.position.set(0, .37, -.16); tb.add(inkstone);
+  for (const lx of [-1.4, 1.4]) { const l = lantern(); l.scale.setScalar(.55); l.position.set(lx, 0, D / 2 + .5); g.add(l); }
+  return g;
+}

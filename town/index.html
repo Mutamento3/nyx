@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <link rel="apple-touch-icon" href="../icon-180.png"><link rel="icon" href="../icon-192.png"><link rel="manifest" href="../manifest.webmanifest">   <!-- the night tree -->
+<script src="../config.js"></script>   <!-- NYX.aiName for the gallery sign; absent when the town runs on its own -->
 
 <meta name="theme-color" content="#f6efe3">
 <title>小镇</title>
@@ -271,11 +272,14 @@ function placeShop(fresh) {
 }
 placeShop(false);
 taken.push([SHX, SHZ, 2]);
+// The companion's gallery: a fixed spot that doesn't move with the number of memory houses. In the harbour it takes the last slot; in Paris and Tang it sits in the south-east corner, a little away from the café
+const GAL_AT = HAR ? [-1.8, -9.0] : [9.0, -5.2];
 // 房子的地：先近后远，都避开十字路、薰衣草田、池塘和小店
 // 10/19 她嫌稀：房子收紧，背靠背围着喷泉广场排一圈（参考 Town to City 那种挤）
 const SLOTS = [[-5.0, -2.4], [-3.3, -5.9], [-6.9, -5.6], [-5.0, 2.4], [-3.3, 5.9], [-6.9, 5.6], [5.0, 2.4], [3.3, 5.9], [6.9, 5.6], [2.4, -7.6], [7.6, -1.8], [-8.6, 0]]
   ;
-if (HAR) SLOTS.splice(0, SLOTS.length, [-5.6, -2.6], [-3.4, -6.0], [-7.4, -6.0], [-5.6, 2.6], [-3.4, 6.0], [-7.4, 6.0], [4.4, 2.8], [6.4, -7.0], [-8.8, 0], [2.8, -8.8], [4.6, 0.2], [-2.6, -8.6]);   // 圣托里尼：西边上坡多放几栋，东边贴着悬崖留出海
+if (HAR) SLOTS.splice(0, SLOTS.length, [-5.6, -2.6], [-3.4, -6.0], [-7.4, -6.0], [-5.6, 2.6], [-3.4, 6.0], [-7.4, 6.0], [4.4, 2.8], [6.4, -7.0], [-8.8, 0], [2.8, -8.8], [4.6, 0.2]);   // 圣托里尼：西边上坡多放几栋，东边贴着悬崖留出海（[-2.6, -8.6] 那一格让给美术馆）
+taken.push([GAL_AT[0], GAL_AT[1], 1.7]);
 const memGroup = new THREE.Group(), farmGroup = new THREE.Group(); town.add(memGroup, farmGroup); farmGroup.visible = false;
 const topics = [];
 if (MEMS) {
@@ -486,6 +490,9 @@ const aimSunflower = () => {   // 白天/傍晚朝太阳，傍晚低头；夜里
 if (RIVER) for (let x = -14; x <= 14; x += .7) taken.push([x, 0, RW + .25]);   // 河道不种东西
 if (HAR) for (let z = -4; z <= 16; z += .6) taken.push([COASTX(z) + .9, z + .4, 1.5]);   // 崖边外是海
 const free = (x, z, r = .6) => !SEA(x + r + .6, z + r + .6) && !nearRiver(x, z, r + .1) && taken.every(([a, b, rr]) => Math.hypot(x - a, z - b) > rr + r);
+// the gallery building faces the square; inside is gallery.html, one wall per work
+const GAL = put((TANG ? TG.gallery : HAR ? HB.gallery : F.gallery)(), GAL_AT[0], GAL_AT[1], Math.atan2(-GAL_AT[0], -GAL_AT[1]), .8);
+own('gallery', GAL, [GAL_AT[0], 1.4, GAL_AT[1]]);
 // 空草地铺成一片片花田；唐风港口地是石头铺满的，绿化交给各家门口
 if (MEMS && !PAVED) {
   const pts = [];
@@ -930,8 +937,9 @@ cv.addEventListener('pointerup', (e) => {
     } else if (id === 'sunflower') {
       show(now === 'night' ? '<h2>向日葵</h2><p>太阳下山了，它不用再装，转过来一直看着你。</p>' : '<h2>向日葵</h2><p>看着挺阳光的。脚底下那一圈什么都长不出来，根里有毒，枯了也有。</p>');
     } else if (id === 'cafe') showShop();
+    else if (id === 'gallery') show(`<h2>${TANG ? '画斋' : HAR ? 'Gallery' : 'Galerie'}<em>${esc((window.NYX && NYX.aiName) || 'Companion')} 的收藏墙</em></h2><p>它逛博物馆的时候停下来看过的画，一面墙挂一幅。每幅底下一张它写的纸条，说为什么停下来；纸条底下你可以回一句。</p><p style="margin-top:12px"><a class="go" href="gallery.html">进去看看 →</a></p>`);
     else { const [n, d] = G.houses[id] || F.guide.houses[id]; show(`<h2>${n}</h2><p>${d}</p>`); }
-    if (id !== 'cafe') sheet.dataset.info = '1';
+    if (id !== 'cafe' && id !== 'gallery') sheet.dataset.info = '1';
     if (mode === 'town') setStage('house', null, o); else flyTo(houses[id]);
     return;
   }

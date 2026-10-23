@@ -8,7 +8,7 @@ GET /app/memtown → {stars: [...], mind: {...}, town: {...}}
        each file is a topic (one house), each top-level bullet is a memory (one window).
 - mind: mood from a xinchao-style service if RELAY_XINCHAO_URL is set; empty otherwise
   (the town then shows clear weather).
-State (nian, recalls, dishes, shop, species) lives in RELAY_TOWN_STATE (default town_state.json beside the db).
+State (nian, recalls, dishes, shop, species, gallery answers) lives in RELAY_TOWN_STATE (default town_state.json beside the db).
 Mounted from nyx_extras.register via `nyx_town.register(app, g)`.
 """
 import hashlib
@@ -157,6 +157,7 @@ def _st() -> dict:
         d = {}
     d.setdefault("nian", 0); d.setdefault("recalls", {}); d.setdefault("sold", {}); d.setdefault("notice", {}); d.setdefault("dishes", {}); d.setdefault("species", {})
     d.setdefault("shop", {"type": "cafe", "dec": {}, "sign": None, "owned": []})
+    d.setdefault("gallery", {})   # the gallery: your answers under each work {piece id: [{at, text}]}
     return d
 
 
@@ -382,6 +383,32 @@ def register(app, g):
                 it["note"] = str(body["note"])[:120]
             _save(d)
         return {"ok": True, "species": d["species"]}
+
+    @app.get("/app/memtown/gallery")
+    async def memtown_gallery(request: Request):
+        """The gallery: the lines you answered under each work."""
+        g["check_auth"](request)
+        return {"ok": True, "replies": _st()["gallery"]}
+
+    @app.post("/app/memtown/gallery")
+    async def memtown_gallery_reply(request: Request):
+        """{id, text}: answer one line under a work's note. {id, drop: at}: take your line back."""
+        g["check_auth"](request)
+        body = await request.json()
+        pid = str(body.get("id", ""))[:40]
+        if not pid or not all(c.isalnum() or c in "-_" for c in pid):
+            return {"ok": False, "why": "哪幅画？"}
+        async with lock:
+            d = _st(); lst = d["gallery"].setdefault(pid, [])
+            if body.get("drop"):
+                lst[:] = [r for r in lst if r.get("at") != body["drop"]]
+            else:
+                text = str(body.get("text", "")).strip()[:200]
+                if not text:
+                    return {"ok": False, "why": "空的"}
+                lst.append({"at": int(time.time() * 1000), "text": text}); del lst[:-50]
+            _save(d)
+        return {"ok": True, "replies": d["gallery"]}
 
     @app.get("/app/memtown")
     async def memtown(request: Request, fresh: int = 0):

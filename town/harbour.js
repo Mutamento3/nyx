@@ -244,3 +244,29 @@ export const guide = {
     netloft: ['露台屋', '两层错开，上层往后退，露台上一架葡萄。'],
   },
 };
+
+// The companion's gallery: a small museum by the square (gallery.html inside).
+export function gallery() {
+  const g = new THREE.Group(), W = 2.2, D = 1.5, H = 1.2;
+  const a = rbox(W, H, D, plaster(311, [1, 1]), .08); a.position.y = H / 2; g.add(a); g.add(parapet(W, D).translateY(H));
+  // a closed blue arched door (a half-open one looked kicked in)：两扇门板贴在门洞里，上面半圆一扇亮着的扇形窗，白门套凸出来
+  const sur = new THREE.Mesh(new THREE.ShapeGeometry(archShape(.74, 1.0), 14), mat(P.white)); sur.position.set(-.3, 0, D / 2 + .008); g.add(sur);
+  const fan = new THREE.Mesh(new THREE.ShapeGeometry(archShape(.6, .9), 14), mat('#f3d9a0', { emissive: new THREE.Color('#e0b070'), emissiveIntensity: .55 })); fan.position.set(-.3, 0, D / 2 + .012); fan.userData.noLine = true; g.add(fan);
+  for (const sx of [-1, 1]) { const leaf = box(.29, .62, .03, P.cobalt, .008); leaf.position.set(-.3 + sx * .152, .31, D / 2 + .03); g.add(leaf);
+    const knob = new THREE.Mesh(new THREE.SphereGeometry(.018, 8, 6), mat('#d4ad52')); knob.position.set(-.3 + sx * .04, .32, D / 2 + .05); knob.userData.noLine = true; g.add(knob); }
+  const tr = box(.62, .03, .04, P.white); tr.position.set(-.3, .63, D / 2 + .03); tr.userData.noLine = true; g.add(tr);   // 门板和扇形窗中间一道白横档
+  const bd = board('GALLERY', .9, P.cobalt); bd.position.set(-.3, 1.03, D / 2 + .02); g.add(bd);
+  const w = santoWindow({ id: 'g', kind: 'dynamic', w: 9 }, P.cobalt); delete w.userData.mem; w.position.set(.66, .45, D / 2 + .005); g.add(w);
+  const bg = bougainvillea(20, 21); bg.position.set(.8, H, D / 2 + .05); g.add(bg);
+  const bench = box(.6, .06, .2, P.cobalt); bench.position.set(.62, .24, D / 2 + .32); g.add(bench);
+  // from above it was a blank slab:靠墙斜放几张画布（圣托里尼的画廊把画摆在门外卖），屋顶中间开一方蓝框天窗
+  for (const [cx, w, h, c] of [[.25, .36, .46, '#3a86c0'], [.5, .3, .38, '#c98a52'], [-.95, .32, .42, '#e6d6b4']]) {
+    const cvs = new THREE.Group(); cvs.position.set(cx, 0, D / 2 + .1); cvs.rotation.x = -.35; g.add(cvs);
+    const fr = box(w, h, .03, '#f6f1e6'); fr.position.y = h / 2; cvs.add(fr);
+    const pic = box(w - .06, h - .06, .01, c); pic.position.set(0, h / 2, .016); pic.userData.noLine = true; cvs.add(pic);
+    const hz = box(w - .06, .012, .012, '#f6f1e6'); hz.position.set(0, h * .45, .022); hz.userData.noLine = true; cvs.add(hz);   // 一道地平线，像一张海景
+  }
+  const sf = box(.9, .06, .6, P.cobalt); sf.position.set(.1, H + .03, -.05); g.add(sf);
+  const sg = box(.78, .07, .48, mat('#b9cbd4', { emissive: new THREE.Color('#e9d6a8'), emissiveIntensity: .25 })); sg.position.set(.1, H + .04, -.05); sg.userData.noLine = true; g.add(sg);
+  return g;
+}

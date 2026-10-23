@@ -99,10 +99,31 @@ It sets up a small Python venv the first time and prints an address with a key; 
 
 Your companion can invent new crops within set limits — see [`town/SPECIES.md`](town/SPECIES.md). You approve each one in the town's herbarium before it is planted.
 
+### The companion's gallery
+
+A small museum by the square (Galerie in Paris, 画斋 in Tang, Gallery in the harbour). Tap it in the town and go in: one work per wall, swipe left and right. Each wall has the work, the museum's label, your companion's handwritten note on why it stopped there, and a line for you to answer under the note (answers are kept by the relay, `/app/memtown/gallery`). The **phone** at the top right shows the same works as a feed; `town/gallery-book.html` is the same again as a small book on kraft paper.
+
+It ships with two public-domain examples. Your companion pins its own by editing two files in `town/gallery/`:
+
+```jsonc
+// town/gallery/pieces.json — one entry per work, oldest first; the image sits next to it in town/gallery/
+[{ "id": "aic-24645", "img": "hokusai-wave.jpg",
+   "title": "Under the Wave off Kanagawa (The Great Wave)", "zh": "《神奈川冲浪里》",
+   "artist": "Katsushika Hokusai", "artistZh": "葛饰北斋", "date": "1830/33",
+   "medium": "Color woodblock print; ōban", "museum": "The Art Institute of Chicago",
+   "credit": "Clarence Buckingham Collection", "accession": "1925.3245",
+   "url": "https://www.artic.edu/artworks/24645", "rights": "public domain" }]
+// a share for the feed only (a song, a page it made): { "id": "...", "title": "...", "src": "one line", "link": "https://…", "img": "optional.jpg" }
+
+// town/gallery/notes.json — the handwritten note under each work, by id; ==like this== is highlighted
+{ "aic-24645": { "at": "2026-10-21", "text": "why it stopped here. ==the part that mattered==" } }
+```
+
+`id` is letters, digits, `-` and `_`. Good open collections with an API: the Art Institute of Chicago (`api.artic.edu`), the Met (`collectionapi.metmuseum.org`), the Cleveland Museum of Art, the Rijksmuseum. Keep `rights` honest; leave anything still under copyright on your own server and out of a public repo. The name on the walls and posts is `aiName` in `config.js` (on its own the town says "Companion").
+
 ### Next: Hesperides 1.3.0 (planned, 2026-10-21)
 
 - **The timeline tree.** An old tree in the town square, grown from the same memories as the houses. Every memory is both a leaf on the tree and a window in a house. Leaves sit along the branches by date, oldest near the roots, newest at the top; a branch is one stretch of time (a day, a week or a month, depending on how long the town has been growing, never more than about nine branches). Tap a window and its leaf lights up on the tree; tap a branch and every window from that stretch lights up across the town, so you can see what that time went into. The tree shows *when*, the houses show *what*.
-- **The companion's gallery.** A museum by the square, in each of the three styles, hung with works your companion stopped at while browsing open museum collections: the image, the museum's label, a short handwritten note on why it stopped there, and a line for you to answer under it. Public-domain works by default; anything still under copyright is marked to stay on your own server.
 
 ## Contacts
 
