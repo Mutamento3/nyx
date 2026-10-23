@@ -303,6 +303,7 @@
       if (atts.length) inner += '<div class="att">' + atts.map(function (a, i) { return a.kind === "image" ? '<img data-i="' + i + '" alt="">' : '<span class="file" data-i="' + i + '">' + esc(a.name || "file") + "</span>"; }).join("") + "</div>";
       inner += rich(m.text);
       if (C.stickers && !atts.length && String(m.text || "").replace(STK, "").trim() === "" && STK.test(m.text || "")) el.classList.add("only-stk");
+      if (!String(m.text || "").trim() && atts.length === 1 && /^sticker-/.test(atts[0].name || "")) el.classList.add("only-stk", "stk-att");   // your own sticker went up as a picture; show it like a sticker
       STK.lastIndex = 0;
     }
     el.innerHTML = '<div class="body">' + inner + '<span class="t">' + hm(m.ts) + (me ? (m.id !== "" && m.id != null ? MARK_SENT : MARK_WAIT) : "") + "</span></div>";
@@ -429,8 +430,23 @@
      with the relay's stickers. ＋ saves pictures from the album, long-press removes one, and tapping a sticker the
      companion sent offers to keep it. */
   var MY_STK = "nyx_stickers", MY_KAO = "nyx_kaomoji";
-  function loadList(k) { try { var a = JSON.parse(ls(k) || "[]"); return Array.isArray(a) ? a : []; } catch (e) { return []; } }
-  function saveList(k, a) { try { localStorage.setItem(k, JSON.stringify(a)); return true; } catch (e) { toast(k === MY_STK ? "No room left — delete a few first" : "Couldn't save"); return false; } }
+  /* Sticker pictures live in IndexedDB, not localStorage: a few dozen stickers plus avatars overflow Safari's ~5 MB
+     localStorage quota, and every save after that fails. A list left in localStorage by an older version moves over on load. */
+  var myStk = [], stkIDB = null;
+  function stkDB() { return stkIDB || (stkIDB = new Promise(function (ok, no) { var r = indexedDB.open("nyx-stickers", 1); r.onupgradeneeded = function () { r.result.createObjectStore("kv"); }; r.onsuccess = function () { ok(r.result); }; r.onerror = function () { no(r.error); }; })); }
+  function stkPut(v) { return stkDB().then(function (db) { return new Promise(function (ok, no) { var t = db.transaction("kv", "readwrite"); t.objectStore("kv").put(v, MY_STK); t.oncomplete = function () { ok(); }; t.onerror = function () { no(t.error); }; }); }); }
+  function stkGet() { return stkDB().then(function (db) { return new Promise(function (ok) { var q = db.transaction("kv").objectStore("kv").get(MY_STK); q.onsuccess = function () { ok(q.result || null); }; q.onerror = function () { ok(null); }; }); }).catch(function () { return null; }); }
+  function stkSet(v) { try { var a = JSON.parse(v); myStk = Array.isArray(a) ? a : []; } catch (e) { myStk = []; } document.dispatchEvent(new Event("nyxstk")); }
+  (function () {
+    var old = ls(MY_STK);
+    if (old) { stkSet(old); stkPut(old).then(function () { try { localStorage.removeItem(MY_STK); } catch (e) {} }).catch(function () {}); }
+    else stkGet().then(function (v) { if (v) stkSet(v); });
+  })();
+  function loadList(k) { if (k === MY_STK) return myStk.slice(); try { var a = JSON.parse(ls(k) || "[]"); return Array.isArray(a) ? a : []; } catch (e) { return []; } }
+  function saveList(k, a) {
+    if (k === MY_STK) { myStk = a.slice(); stkPut(JSON.stringify(myStk)).catch(function () { toast("Couldn't save"); }); return true; }
+    try { localStorage.setItem(k, JSON.stringify(a)); return true; } catch (e) { toast("Couldn't save"); return false; }
+  }
   function shrinkSticker(f) {   // 240px is plenty for a sticker; small GIFs keep their animation
     return new Promise(function (ok) {
       if (f.type === "image/gif" && f.size < 400 * 1024) { var r = new FileReader(); r.onload = function () { ok(r.result); }; r.onerror = function () { ok(null); }; r.readAsDataURL(f); return; }
@@ -447,6 +463,7 @@
   }
   function nid() { return Date.now() + "-" + Math.random().toString(36).slice(2, 6); }
   (function () { var pop = $("emoPop"), stk = (C.stickers && C.stickerList) || [];
+    document.addEventListener("nyxstk", function () { paint(); });
     function paint() {
       var mine = loadList(MY_STK), kao = loadList(MY_KAO);
       pop.innerHTML = '<div class="stks"><button type="button" class="add" data-act="add" aria-label="Add a sticker">＋</button>' +

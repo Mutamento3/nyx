@@ -448,3 +448,7 @@ html.kb #orb, html.kb #fan{ visibility:hidden; }
 .hold .tk .tt{ margin:6px 0 2px; }
 .hold .tk .acts{ gap:10px; }
 :root[data-side="moon"] .hold .tk{ background:color-mix(in srgb, var(--ink) 7%, transparent); }
+
+/* your own stickers are sent as uploaded pictures named sticker-…; same size and no bubble as the relay's */
+.msg.stk-att .body{ background:none !important; box-shadow:none !important; border:0 !important; padding:0 !important; }
+.msg.stk-att .att img{ max-width:120px; max-height:120px; border-radius:0; background:none; cursor:default; }
