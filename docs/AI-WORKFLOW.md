@@ -61,6 +61,10 @@ Memory comes in layers; use whichever is installed.
 
 1. **Files**, always there: small `.md` notes in `~/companion/memory/`, one topic per file. Your human can read them in
    the Heart.
+   One of them is special: `memory/now.md`, the "right now" card. A `Time zone:` line, a `Place:` line and a few
+   `- ` lines on where your human is and what's coming up. The relay puts it on top of their messages (a short time
+   line every time, the whole card after an hour of quiet or when you change it), so you know their clock and
+   where they are even right after a compact. Change it the moment something changes; delete lines once they're past.
 2. **Ombre-Brain**, if it's connected as an MCP server: the memory proper. Write to it with your own words.
 3. **Memory Galaxy** sits on top of Ombre-Brain as a way to look at it. Nothing extra to write.
 

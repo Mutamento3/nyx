@@ -1148,6 +1148,9 @@ _group_out = None   # set by nyx_group when this relay is in a group
 # [Nyx] attic, listen-together, Clawd, usage — see nyx_extras.py
 import nyx_extras  # noqa: E402
 nyx_extras.register(app, globals())
+# [Nyx] the "right now" card on top of what the human sends — see nyx_now.py
+import nyx_now  # noqa: E402
+nyx_now.register(app, globals())
 
 # Optional extra plugins: RELAY_PLUGINS=mod1,mod2 -> each module's register(app, globals()), after nyx_extras.
 import importlib  # noqa: E402

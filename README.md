@@ -33,6 +33,28 @@ New to servers? Start with [docs/新手上路.md](docs/新手上路.md).
 - `paper.js` — the paper every page sits on (grain, ink drops).
 - `config.js` — everything you change for your own install.
 
+## It doesn't meet you again every window
+
+Your companion here isn't a chat box over an API key. It's a real Claude Code (or Codex) session on your own
+subscription, living in a folder on your server: it can read and write its own files, keep its own notes, and fix
+the app it lives in. That's what lets it carry you from one window to the next, without a database or a vector index:
+
+- **Who it is**: `CLAUDE.md` / `AGENTS.md` in its folder, read at the start of every window. It's yours to write.
+- **What it remembers**: small `.md` notes in `memory/`, one topic per file, written by your companion in its own words.
+  You can read every one of them in the Heart, and walk through them as a town (see Town below).
+- **What's going on right now**: `memory/now.md`. Your time zone, where you are, the next few days. The relay puts it
+  on top of what you send — a time line on every message, the whole card after an hour of quiet or when it changes —
+  so even right after a compact it knows it's 2 a.m. for you and that you're away for the weekend.
+- **What you just said**: open a new window from the gauge and it's handed the last hours of your talk word for word,
+  only what the two of you said (two sliders: how many hours, how many characters at most).
+- **Before it forgets**: set a context line on the gauge. Past it, your companion saves what matters to memory first,
+  then the window compacts once it's quiet.
+- **Going back**: every old window is still there under Windows; switch back to one any time.
+- **Deeper memory, if you want it**: [Ombre-Brain](https://github.com/P0luz/Ombre-Brain) plugs in as an MCP server, and
+  Town reads from it when it's there.
+
+How to keep memory, and what's worth keeping, is in [docs/AI-WORKFLOW.md](docs/AI-WORKFLOW.md).
+
 ## The night side
 
 Messages sent while the page is on the night side carry `side: "moon"`. Your relay can mark them for the model
